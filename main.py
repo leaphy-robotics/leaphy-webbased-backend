@@ -69,7 +69,7 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
 
 
 @app.post("/compile/cpp")
-async def compile_cpp(sketch: Sketch, session_id: Session):
+async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
     # Make sure there's no more than X compile requests per user
     sessions[session_id] += 1
 
@@ -83,7 +83,7 @@ async def compile_cpp(sketch: Sketch, session_id: Session):
         # Nope -> compile and store in cache
         await _install_libraries(sketch.libraries)
         result = await _compile_sketch(sketch)
-        code_cache[cache_key] = result["hex"]
+        code_cache[cache_key] = result
         return result
     finally:
         sessions[session_id] -= 1
