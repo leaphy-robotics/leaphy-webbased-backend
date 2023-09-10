@@ -1,3 +1,4 @@
+""" FastAPI models """
 from typing import Annotated
 
 from pydantic import BaseModel, Field
@@ -7,7 +8,8 @@ Library = Annotated[str, Field(pattern=r"^[a-zA-Z0-9_ ]*$")]
 
 
 class Sketch(BaseModel):
+    """Model representing a arduino Sketch"""
+
     source_code: str
-    # TODO: make this an enum with supported board types
     board: str
     libraries: list[Library] = []

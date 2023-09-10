@@ -1,3 +1,4 @@
+""" Manage session concurrency """
 import uuid
 from typing import Annotated
 
@@ -13,6 +14,7 @@ sessions = TTLCache(maxsize=settings.max_total_sessions, ttl=settings.session_du
 def get_session_id(
     response: Response, session_id: Annotated[str | None, Cookie()] = None
 ):
+    """Generate or get a consistent session ID for an anonymous user"""
     if not session_id:
         # First time user, create a new session
         session_id = uuid.uuid4().hex

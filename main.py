@@ -1,3 +1,4 @@
+""" Leaphy compiler backend webservice """
 import asyncio
 import tempfile
 from os import path
@@ -19,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Limit compiler concurrency to prevent overloading the vm
+semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 
 
 async def _install_libraries(libraries: list[Library]):
@@ -46,8 +50,8 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
         sketch_path = f"{dir_name}/{file_name}"
 
         # Write the sketch to a temp .ino file
-        async with aiofiles.open(sketch_path, "w+") as f:
-            await f.write(sketch.source_code)
+        async with aiofiles.open(sketch_path, "w+") as _f:
+            await _f.write(sketch.source_code)
 
         compiler = await asyncio.create_subprocess_exec(
             settings.arduino_cli_path,
@@ -64,12 +68,13 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
         if compiler.returncode != 0:
             raise HTTPException(500, stderr.decode() + stdout.decode())
 
-        async with aiofiles.open(f"{sketch_path}.hex", "r") as f:
-            return {"hex": await f.read()}
+        async with aiofiles.open(f"{sketch_path}.hex", "r") as _f:
+            return {"hex": await _f.read()}
 
 
 @app.post("/compile/cpp")
 async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
+    """Compile code and return the result in HEX format"""
     # Make sure there's no more than X compile requests per user
     sessions[session_id] += 1
 
@@ -81,9 +86,10 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
             return compiled_code
 
         # Nope -> compile and store in cache
-        await _install_libraries(sketch.libraries)
-        result = await _compile_sketch(sketch)
-        code_cache[cache_key] = result
-        return result
+        async with semaphore:
+            await _install_libraries(sketch.libraries)
+            result = await _compile_sketch(sketch)
+            code_cache[cache_key] = result
+            return result
     finally:
         sessions[session_id] -= 1
