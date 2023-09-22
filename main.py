@@ -8,11 +8,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from conf import settings
-from models import Sketch, Library
+from deps.cache import code_cache, get_code_cache_key, library_cache
+from deps.lifespan import lifespan
+from deps.logs import logger
 from deps.session import Session, sessions
-from deps.cache import code_cache, get_code_cache_key
+from models import Sketch, Library
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -21,14 +23,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 
 
-async def _install_libraries(libraries: list[Library]):
+async def _install_libraries(libraries: list[Library]) -> None:
     # Install required libraries
     for library in libraries:
-        print(f"Installing libraries: {library}")
+        if library_cache.get(library):
+            continue
+
+        logger.info("Installing libraries: %s", library)
         installer = await asyncio.create_subprocess_exec(
             settings.arduino_cli_path,
             "lib",
@@ -39,9 +45,13 @@ async def _install_libraries(libraries: list[Library]):
         )
         stdout, stderr = await installer.communicate()
         if installer.returncode != 0:
+            logger.error(
+                "Failed to install library: %s", stderr.decode() + stdout.decode()
+            )
             raise HTTPException(
                 500, f"Failed to install library: {stderr.decode() + stdout.decode()}"
             )
+        library_cache[library] = 1
 
 
 async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
@@ -66,6 +76,7 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
         )
         stdout, stderr = await compiler.communicate()
         if compiler.returncode != 0:
+            logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
             raise HTTPException(500, stderr.decode() + stdout.decode())
 
         async with aiofiles.open(f"{sketch_path}.hex", "r") as _f:

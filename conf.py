@@ -15,9 +15,12 @@ class Settings(BaseSettings):
     max_total_sessions: int = 10000
     session_duration: int = 3600
 
-    # Code cache settings
+    # Code and library cache settings
     max_code_caches: int = 100
     code_cache_duration: int = 3600
+    max_library_caches: int = 50
+    library_cache_duration: int = 24 * 3600
+
     # Max number of concurrent compile tasks
     max_concurrent_tasks: int = 10
 
