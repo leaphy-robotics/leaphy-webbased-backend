@@ -1,7 +1,7 @@
 """ Leaphy compiler and minifier backend webservice """
 import asyncio
-import tempfile
 import base64
+import tempfile
 from os import path
 
 import aiofiles
@@ -115,7 +115,13 @@ async def minify_python(program: PythonProgram, session_id: Session) -> PythonPr
     sessions[session_id] += 1
     try:
         # Check if this code was minified before
-        code = base64.b64decode(program.source_code).decode()
+        try:
+            code = base64.b64decode(program.source_code).decode()
+        except Exception as ex:
+            raise HTTPException(
+                422, f"Unable to base64 decode program: {str(ex)}"
+            ) from ex
+
         cache_key = get_code_cache_key(code)
         if minified_code := code_cache.get(cache_key):
             # It was -> return cached result
@@ -123,11 +129,13 @@ async def minify_python(program: PythonProgram, session_id: Session) -> PythonPr
 
         # Nope -> minify and store in cache
         async with semaphore:
-            program.source_code = base64.b64encode(
-                minify(
-                    code, filename=program.filename, remove_annotations=False
-                ).encode()
-            )
+            try:
+                code = minify(code, filename=program.filename, remove_annotations=False)
+            except Exception as ex:
+                raise HTTPException(
+                    422, f"Unable to minify python program: {str(ex)}"
+                ) from ex
+            program.source_code = base64.b64encode(code.encode())
             code_cache[cache_key] = program
             return program
     finally:
