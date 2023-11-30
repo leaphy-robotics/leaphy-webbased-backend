@@ -128,7 +128,7 @@ async def minify_python(program: PythonProgram, session_id: Session) -> PythonPr
                     code, filename=program.filename, remove_annotations=False
                 ).encode()
             )
-            code_cache[cache_key] = program.source_code
+            code_cache[cache_key] = program
             return program
     finally:
         sessions[session_id] -= 1
