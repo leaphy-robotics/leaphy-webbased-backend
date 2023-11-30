@@ -18,5 +18,5 @@ class Sketch(BaseModel):
 class PythonProgram(BaseModel):
     """Model representing a python program"""
 
-    source_code: str  # Base64 encoded program
+    source_code: bytes  # Base64 encoded program
     filename: str = ""
