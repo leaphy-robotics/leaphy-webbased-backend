@@ -1,18 +1,20 @@
-""" Leaphy compiler backend webservice """
+""" Leaphy compiler and minifier backend webservice """
 import asyncio
 import tempfile
+import base64
 from os import path
 
 import aiofiles
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from python_minifier import minify
 
 from conf import settings
 from deps.cache import code_cache, get_code_cache_key, library_cache
 from deps.lifespan import lifespan
 from deps.logs import logger
 from deps.session import Session, sessions
-from models import Sketch, Library
+from models import Sketch, Library, PythonProgram
 
 app = FastAPI(lifespan=lifespan)
 app.add_middleware(
@@ -102,5 +104,31 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
             result = await _compile_sketch(sketch)
             code_cache[cache_key] = result
             return result
+    finally:
+        sessions[session_id] -= 1
+
+
+@app.post("/minify/python")
+async def minify_python(program: PythonProgram, session_id: Session) -> PythonProgram:
+    """Minify a python program"""
+    # Make sure there's no more than X minify requests per user
+    sessions[session_id] += 1
+    try:
+        # Check if this code was minified before
+        code = base64.b64decode(program.source_code).decode()
+        cache_key = get_code_cache_key(code)
+        if minified_code := code_cache.get(cache_key):
+            # It was -> return cached result
+            return minified_code
+
+        # Nope -> minify and store in cache
+        async with semaphore:
+            program.source_code = base64.b64encode(
+                minify(
+                    code, filename=program.filename, remove_annotations=False
+                ).encode()
+            )
+            code_cache[cache_key] = program.source_code
+            return program
     finally:
         sessions[session_id] -= 1

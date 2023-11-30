@@ -13,3 +13,10 @@ class Sketch(BaseModel):
     source_code: str
     board: str
     libraries: list[Library] = []
+
+
+class PythonProgram(BaseModel):
+    """Model representing a python program"""
+
+    source_code: str  # Base64 encoded program
+    filename: str = ""
