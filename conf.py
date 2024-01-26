@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     code_cache_duration: int = 3600
     max_library_caches: int = 50
     library_cache_duration: int = 24 * 3600
+    library_index_refresh_interval: int = 3600
 
     # Max number of concurrent compile tasks
     max_concurrent_tasks: int = 10

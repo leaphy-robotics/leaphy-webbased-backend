@@ -11,12 +11,12 @@ from python_minifier import minify
 
 from conf import settings
 from deps.cache import code_cache, get_code_cache_key, library_cache
-from deps.lifespan import lifespan
+from deps.lifespan import startup
 from deps.logs import logger
 from deps.session import Session, sessions
 from models import Sketch, Library, PythonProgram
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=startup)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
