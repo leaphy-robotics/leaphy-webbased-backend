@@ -11,9 +11,9 @@ from python_minifier import minify
 
 from conf import settings
 from deps.cache import code_cache, get_code_cache_key, library_cache
-from deps.lifespan import startup
 from deps.logs import logger
 from deps.session import Session, sessions
+from deps.tasks import startup
 from models import Sketch, Library, PythonProgram
 
 app = FastAPI(lifespan=startup)

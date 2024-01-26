@@ -3,15 +3,15 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi_utils.tasks import repeat_every
 
 from conf import settings
 from deps.logs import logger
+from deps.utils import repeat_every
 
 
 @asynccontextmanager
 async def startup(_app: FastAPI) -> None:
-    """ Startup context manager """
+    """Startup context manager"""
     await refresh_library_index()
     yield
 
