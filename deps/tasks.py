@@ -12,7 +12,8 @@ from deps.utils import repeat_every
 @asynccontextmanager
 async def startup(_app: FastAPI) -> None:
     """Startup context manager"""
-    await refresh_library_index()
+    if settings.library_index_refresh_interval > 0:
+        await refresh_library_index()
     yield
 
 
