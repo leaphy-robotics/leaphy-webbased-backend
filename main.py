@@ -93,7 +93,7 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
 
     try:
         # Check if this code was compiled before
-        cache_key = get_code_cache_key(sketch.source_code)
+        cache_key = get_code_cache_key(sketch.model_dump_json())
         if compiled_code := code_cache.get(cache_key):
             # It was -> return cached result
             return compiled_code
