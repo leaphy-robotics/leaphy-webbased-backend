@@ -10,7 +10,7 @@ USER arduino
 
 # Install Arduino CLI
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh && \
-    /app/bin/arduino-cli core install arduino:avr
+    /app/bin/arduino-cli core install arduino:avr arduino:esp32
 ENV ARDUINO_CLI_PATH=/app/bin/arduino-cli
 
 COPY --chown=arduino:arduino requirements.txt /app/requirements.txt
