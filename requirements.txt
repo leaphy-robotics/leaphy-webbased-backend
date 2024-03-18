@@ -5,3 +5,4 @@ pydantic==2.6.3
 pydantic-settings==2.2.1
 cachetools==5.3.3
 python-minifier==2.9.0
+pyserial==3.5

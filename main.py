@@ -81,8 +81,27 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
             logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
             raise HTTPException(500, stderr.decode() + stdout.decode())
 
-        async with aiofiles.open(f"{sketch_path}.hex", "r") as _f:
-            return {"hex": await _f.read()}
+        file_result = {}
+
+        files = [
+            ("hex", ".hex")
+        ]
+        for file in files:
+            if path.exists(f"{sketch_path}{file[1]}"):
+                async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
+                    file_result[file[0]] = await _f.read()
+
+        binary_files = [
+            ("bootloader", ".bootloader.bin"),
+            ("partitions", ".partitions.bin"),
+            ("sketch", ".bin")
+        ]
+        for file in binary_files:
+            if path.exists(f"{sketch_path}{file[1]}"):
+                async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
+                    file_result[file[0]] = base64.b64encode(await _f.read()).decode("utf-8")
+
+        return file_result
 
 
 @app.post("/compile/cpp")
