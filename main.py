@@ -83,9 +83,7 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
 
         file_result = {}
 
-        files = [
-            ("hex", ".hex")
-        ]
+        files = [("hex", ".hex")]
         for file in files:
             if path.exists(f"{sketch_path}{file[1]}"):
                 async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
@@ -94,12 +92,14 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
         binary_files = [
             ("bootloader", ".bootloader.bin"),
             ("partitions", ".partitions.bin"),
-            ("sketch", ".bin")
+            ("sketch", ".bin"),
         ]
         for file in binary_files:
             if path.exists(f"{sketch_path}{file[1]}"):
                 async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
-                    file_result[file[0]] = base64.b64encode(await _f.read()).decode("utf-8")
+                    file_result[file[0]] = base64.b64encode(await _f.read()).decode(
+                        "utf-8"
+                    )
 
         return file_result
 
