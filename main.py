@@ -89,10 +89,7 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
                 async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
                     file_result[file[0]] = await _f.read()
 
-        binary_files = [
-            ("sketch", ".bin"),
-            ("sketch", ".uf2")
-        ]
+        binary_files = [("sketch", ".bin"), ("sketch", ".uf2")]
         for file in binary_files:
             if path.exists(f"{sketch_path}{file[1]}"):
                 async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
