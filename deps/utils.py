@@ -92,10 +92,8 @@ async def check_for_internet() -> bool:
     """Check if internet connection is available"""
     client = httpx.AsyncClient()
     try:
-        response = await client.get(
-            "https://downloads.arduino.cc", headers={"User-Agent": ""}
-        )
+        response = await client.get("https://downloads.arduino.cc", timeout=5)
         response.raise_for_status()
-    except (httpx.RequestError, httpx.HTTPError):
+    except httpx.HTTPError:
         return False
     return True

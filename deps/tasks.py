@@ -20,7 +20,7 @@ async def startup(_app: FastAPI) -> None:
 @repeat_every(seconds=settings.library_index_refresh_interval, logger=logger)
 async def refresh_library_index():
     """Update the Arduino library index"""
-    if not check_for_internet():
+    if not await check_for_internet():
         return
     logger.info("Updating library index...")
     installer = await asyncio.create_subprocess_exec(
