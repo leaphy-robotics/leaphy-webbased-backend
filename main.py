@@ -14,6 +14,7 @@ from deps.cache import code_cache, get_code_cache_key, library_cache
 from deps.logs import logger
 from deps.session import Session, sessions
 from deps.tasks import startup
+from deps.utils import check_for_internet
 from models import Sketch, Library, PythonProgram
 
 app = FastAPI(lifespan=startup)
@@ -32,6 +33,8 @@ semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 
 async def _install_libraries(libraries: list[Library]) -> None:
     # Install required libraries
+    if not check_for_internet():
+        return
     for library in libraries:
         if library_cache.get(library):
             continue

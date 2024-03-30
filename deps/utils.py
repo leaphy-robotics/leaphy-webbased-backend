@@ -6,7 +6,10 @@ from functools import wraps
 from traceback import format_exception
 from typing import Any, Callable, Coroutine, Optional, Union
 
+import httpx
 from starlette.concurrency import run_in_threadpool
+
+from deps.logs import logger
 
 NoArgsNoReturnFuncT = Callable[[], None]
 NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
@@ -85,3 +88,14 @@ def repeat_every(
         return wrapped
 
     return decorator
+
+
+async def check_for_internet() -> bool:
+    client = httpx.AsyncClient()
+    try:
+        response = await client.get("https://downloads.arduino.cc", headers={"User-Agent": ""})
+        response.raise_for_status()
+    except (httpx.RequestError, httpx.HTTPError):
+        logger.info("Internet check failed, we're offline.")
+        return False
+    return True
