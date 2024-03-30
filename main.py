@@ -34,6 +34,7 @@ semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 async def _install_libraries(libraries: list[Library]) -> None:
     # Install required libraries
     if not check_for_internet():
+        logger.warning("No internet connection, skipping library install")
         return
     for library in libraries:
         if library_cache.get(library):

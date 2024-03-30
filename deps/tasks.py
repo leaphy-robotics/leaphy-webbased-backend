@@ -6,8 +6,7 @@ from fastapi import FastAPI
 
 from conf import settings
 from deps.logs import logger
-from deps.utils import repeat_every
-from utils import check_for_internet
+from deps.utils import repeat_every, check_for_internet
 
 
 @asynccontextmanager

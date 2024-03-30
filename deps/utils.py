@@ -9,8 +9,6 @@ from typing import Any, Callable, Coroutine, Optional, Union
 import httpx
 from starlette.concurrency import run_in_threadpool
 
-from deps.logs import logger
-
 NoArgsNoReturnFuncT = Callable[[], None]
 NoArgsNoReturnAsyncFuncT = Callable[[], Coroutine[Any, Any, None]]
 NoArgsNoReturnDecorator = Callable[
@@ -91,6 +89,7 @@ def repeat_every(
 
 
 async def check_for_internet() -> bool:
+    """Check if internet connection is available"""
     client = httpx.AsyncClient()
     try:
         response = await client.get(
@@ -98,6 +97,5 @@ async def check_for_internet() -> bool:
         )
         response.raise_for_status()
     except (httpx.RequestError, httpx.HTTPError):
-        logger.info("Internet check failed, we're offline.")
         return False
     return True
