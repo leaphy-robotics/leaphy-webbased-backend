@@ -93,7 +93,9 @@ def repeat_every(
 async def check_for_internet() -> bool:
     client = httpx.AsyncClient()
     try:
-        response = await client.get("https://downloads.arduino.cc", headers={"User-Agent": ""})
+        response = await client.get(
+            "https://downloads.arduino.cc", headers={"User-Agent": ""}
+        )
         response.raise_for_status()
     except (httpx.RequestError, httpx.HTTPError):
         logger.info("Internet check failed, we're offline.")
