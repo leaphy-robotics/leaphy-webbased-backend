@@ -165,6 +165,7 @@ async def minify_python(program: PythonProgram, session_id: Session) -> PythonPr
 
 @app.post("/ai/generate")
 async def generate(messages: Messages, session_id: Session):
+    """Generate message"""
     if llm_tokens[session_id] >= settings.max_llm_tokens:
         raise HTTPException(429, {"detail": "Try again later"})
 

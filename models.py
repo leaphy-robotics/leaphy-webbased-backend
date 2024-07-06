@@ -24,9 +24,13 @@ class PythonProgram(BaseModel):
 
 
 class Message(BaseModel):
+    """Model representing a message"""
+
     role: str
     content: str
 
 
 class Messages(BaseModel):
+    """Model representing a collection of messages"""
+
     messages: list[Message]
