@@ -1,4 +1,5 @@
 """ Leaphy compiler and minifier backend webservice """
+
 import asyncio
 import base64
 import tempfile
@@ -169,7 +170,7 @@ async def generate(messages: Messages, session_id: Session):
 
     response = client.chat.completions.create(
         messages=list(map(lambda e: e.dict(), messages.messages)),
-        model='llama3-70b-8192'
+        model="llama3-70b-8192",
     )
     llm_tokens[session_id] += response.usage.total_tokens
 

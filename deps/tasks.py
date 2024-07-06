@@ -1,4 +1,5 @@
 """ Manage startup / shutdown of the application """
+
 import asyncio
 from contextlib import asynccontextmanager
 

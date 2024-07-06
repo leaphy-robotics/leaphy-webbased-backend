@@ -1,4 +1,5 @@
 """ Create a standard logger """
+
 import logging
 from conf import settings
 

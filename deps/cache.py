@@ -1,4 +1,5 @@
 """ Code for caching compiled C++ code """
+
 from hashlib import md5
 
 from cachetools import TTLCache
