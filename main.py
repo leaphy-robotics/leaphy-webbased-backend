@@ -7,15 +7,16 @@ from os import path
 import aiofiles
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from groq import Groq
 from python_minifier import minify
 
 from conf import settings
 from deps.cache import code_cache, get_code_cache_key, library_cache
 from deps.logs import logger
-from deps.session import Session, sessions
+from deps.session import Session, compile_sessions, llm_tokens
 from deps.tasks import startup
 from deps.utils import check_for_internet
-from models import Sketch, Library, PythonProgram
+from models import Sketch, Library, PythonProgram, Messages
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -25,7 +26,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+client = Groq(api_key=settings.groq_api_key)
 
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
@@ -108,7 +109,7 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
 async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
     """Compile code and return the result in HEX format"""
     # Make sure there's no more than X compile requests per user
-    sessions[session_id] += 1
+    compile_sessions[session_id] += 1
 
     try:
         # Check if this code was compiled before
@@ -124,14 +125,14 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
             code_cache[cache_key] = result
             return result
     finally:
-        sessions[session_id] -= 1
+        compile_sessions[session_id] -= 1
 
 
 @app.post("/minify/python")
 async def minify_python(program: PythonProgram, session_id: Session) -> PythonProgram:
     """Minify a python program"""
     # Make sure there's no more than X minify requests per user
-    sessions[session_id] += 1
+    compile_sessions[session_id] += 1
     try:
         # Check if this code was minified before
         try:
@@ -158,4 +159,18 @@ async def minify_python(program: PythonProgram, session_id: Session) -> PythonPr
             code_cache[cache_key] = program
             return program
     finally:
-        sessions[session_id] -= 1
+        compile_sessions[session_id] -= 1
+
+
+@app.post("/ai/generate")
+async def generate(messages: Messages, session_id: Session):
+    if llm_tokens[session_id] >= settings.max_llm_tokens:
+        raise HTTPException(429, {"detail": "Try again later"})
+
+    response = client.chat.completions.create(
+        messages=list(map(lambda e: e.dict(), messages.messages)),
+        model='llama3-70b-8192'
+    )
+    llm_tokens[session_id] += response.usage.total_tokens
+
+    return response.choices[0].message.content

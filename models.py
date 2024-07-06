@@ -20,3 +20,12 @@ class PythonProgram(BaseModel):
 
     source_code: bytes  # Base64 encoded program
     filename: str = ""
+
+
+class Message(BaseModel):
+    role: str
+    content: str
+
+
+class Messages(BaseModel):
+    messages: list[Message]
