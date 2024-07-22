@@ -1,7 +1,7 @@
 fastapi==0.111.1
 aiofiles==24.1.0
 uvicorn==0.30.3
-pydantic==2.8.0
+pydantic==2.8.2
 pydantic-settings==2.3.4
 cachetools==5.4.0
 python-minifier==2.9.0
