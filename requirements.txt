@@ -7,4 +7,4 @@ cachetools==5.4.0
 python-minifier==2.9.0
 pyserial==3.5
 httpx==0.27.2
-groq==0.9.0
+groq==0.11.0
