@@ -23,7 +23,9 @@ class Settings(BaseSettings):
     max_library_caches: int = 50
     library_cache_duration: int = 24 * 3600
     library_index_refresh_interval: int = 3600
-    ignored_libraries: list[str] = [] # Libraries that should be ignored when downloading them. Useful for testing with unpublished changes to libraries
+    ignored_libraries: list[str] = [
+        ""
+    ]  # Libraries that should be ignored when downloading them. Useful for testing with unpublished changes to libraries
 
     # Max number of concurrent compile tasks
     max_concurrent_tasks: int = 10

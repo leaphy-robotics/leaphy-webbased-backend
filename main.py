@@ -45,7 +45,7 @@ async def _install_libraries(libraries: list[Library]) -> None:
         if library in settings.ignored_libraries:
             logger.warning("Ignoring library: %s", library)
             continue
-        
+
         logger.info("Installing libraries: %s", library)
         installer = await asyncio.create_subprocess_exec(
             settings.arduino_cli_path,
