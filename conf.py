@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     arduino_cli_path: str = "arduino-cli"
     cors_origins: list[str] = ["*"]
+    cors_origin_regex: str | None = None
     log_level: str = "INFO"
 
     # Session settings
