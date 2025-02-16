@@ -2,8 +2,8 @@
 
 import asyncio
 import base64
-import tempfile
-from os import path
+import os
+
 
 import aiofiles
 from fastapi import FastAPI, HTTPException
@@ -16,8 +16,8 @@ from deps.cache import code_cache, get_code_cache_key, library_cache
 from deps.logs import logger
 from deps.session import Session, compile_sessions, llm_tokens
 from deps.tasks import startup
-from deps.utils import check_for_internet
 from models import Sketch, Library, PythonProgram, Messages
+from sketch import _install_libraries
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -34,77 +34,38 @@ client = Groq(api_key=settings.groq_api_key)
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 
 
-async def _install_libraries(libraries: list[Library]) -> None:
-    # Install required libraries
-    if not await check_for_internet():
-        logger.warning("No internet connection, skipping library install")
-        return
-    for library in libraries:
-        if library_cache.get(library):
-            continue
 
-        logger.info("Installing libraries: %s", library)
-        installer = await asyncio.create_subprocess_exec(
-            settings.arduino_cli_path,
-            "lib",
-            "install",
-            library,
-            stderr=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await installer.communicate()
-        if installer.returncode != 0:
-            logger.error(
-                "Failed to install library: %s", stderr.decode() + stdout.decode()
-            )
-            raise HTTPException(
-                500, f"Failed to install library: {stderr.decode() + stdout.decode()}"
-            )
-        library_cache[library] = 1
 
 
 async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
-    with tempfile.TemporaryDirectory() as dir_name:
-        file_name = f"{path.basename(dir_name)}.ino"
-        sketch_path = f"{dir_name}/{file_name}"
+    dir_name = "/tmp/build"
+    sketch_path = f"{dir_name}/src/main.cpp"
+    platformio_config_path = f"{dir_name}/platformio.ini"
 
-        # Write the sketch to a temp .ino file
-        async with aiofiles.open(sketch_path, "w+") as _f:
-            await _f.write(sketch.source_code)
+    os.mkdir(f"{dir_name}/src")
 
-        compiler = await asyncio.create_subprocess_exec(
-            settings.arduino_cli_path,
-            "compile",
-            "--fqbn",
-            sketch.board,
-            sketch_path,
-            "--output-dir",
-            dir_name,
-            stderr=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await compiler.communicate()
-        if compiler.returncode != 0:
-            logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
-            raise HTTPException(500, stderr.decode() + stdout.decode())
+    # Write the sketch to a temp .ino file
+    async with aiofiles.open(sketch_path, "w+") as _f:
+        await _f.write("#include <Arduino.h>\n" + sketch.source_code)
 
-        file_result = {}
+    async with aiofiles.open(platformio_config_path, "w+") as _f:
+        await _f.write(f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\n")
 
-        files = [("hex", ".hex")]
-        for file in files:
-            if path.exists(f"{sketch_path}{file[1]}"):
-                async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
-                    file_result[file[0]] = await _f.read()
+    compiler = await asyncio.create_subprocess_exec(
+        "platformio",
+        "run",
+        stderr=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        cwd=dir_name,
+    )
+    stdout, stderr = await compiler.communicate()
+    if compiler.returncode != 0:
+        logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
+        raise HTTPException(500, stderr.decode() + stdout.decode())
 
-        binary_files = [("sketch", ".bin"), ("sketch", ".uf2")]
-        for file in binary_files:
-            if path.exists(f"{sketch_path}{file[1]}"):
-                async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
-                    file_result[file[0]] = base64.b64encode(await _f.read()).decode(
-                        "utf-8"
-                    )
-
-        return file_result
+    output_file = f"{dir_name}/.pio/build/build/firmware.hex"
+    async with aiofiles.open(output_file, "rb") as _f:
+        return {"hex": str(await _f.read())}
 
 
 @app.post("/compile/cpp")
