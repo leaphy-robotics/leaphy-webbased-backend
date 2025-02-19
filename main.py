@@ -9,10 +9,11 @@ from groq import Groq
 from python_minifier import minify
 
 from conf import settings
+from models import Sketch, PythonProgram, Messages
+
+from deps.sketch import _install_libraries, _compile_sketch, startup
 from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
-from models import Sketch, PythonProgram, Messages
-from deps.sketch import _install_libraries, _compile_sketch, startup
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(

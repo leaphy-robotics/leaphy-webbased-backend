@@ -48,7 +48,54 @@ def _parse_library_properties(properties: str) -> dict[str, str]:
     return dict(line.split("=") for line in properties.split("\n") if "=" in line)
 
 
-async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
+async def _install_library_zip(
+    library_zip: zipfile.ZipFile, repo: dict[str, str], library_dir: str
+):
+    arches = []
+    deps = []
+    deps_arches = {}
+    in_deps = {}
+    for file in library_zip.namelist():
+        if file.split(".")[-1] in ["cpp", "c", "h", "hpp"]:
+            # Check where we want to store the file
+            # If it is in a src/ directory everything after that should be preserved
+            # If it is in the root we want tom perserve everything after the library name
+            new_file = file
+            root_folder = repo["archiveFileName"].removesuffix(".zip")
+            if new_file.startswith(f"{root_folder}/src/"):
+                new_file = new_file.replace(f"{root_folder}/src/", "")
+            elif new_file == f"{root_folder}/" + new_file.split("/")[-1]:
+                new_file = new_file.replace(f"{root_folder}/", "")
+            else:
+                continue
+            # Recursively create the directories for the file
+            os.makedirs(path.dirname(f"{library_dir}/src/{new_file}"), exist_ok=True)
+            async with aiofiles.open(f"{library_dir}/src/{new_file}", "w+") as _f:
+                await _f.write(library_zip.read(file).decode())
+        elif file.endswith("library.properties"):
+            # Read only the dependencies and arches from the library.properties file
+            # Recursively call _install_libraries
+            library_props = _parse_library_properties(library_zip.read(file).decode())
+            arches = library_props.get("architectures", "*").split(",")
+            deps = library_props.get("depends", "").split(",")
+            if deps[0] == "":
+                deps = []
+            if deps:
+                for i, dep in enumerate(deps):
+                    deps[i] = dep.strip()
+                in_deps = await _install_libraries(deps)
+                for dep in deps:
+                    async with aiofiles.open(
+                        f"./arduino-libs/{dep}@{in_deps[dep]}/compiled_sources.json",
+                        "r",
+                    ) as _f:
+                        deps_arches[dep] = json.loads(await _f.read())["arches"]
+    return arches, deps, deps_arches, in_deps
+
+
+async def _install_libraries(  # pylint: disable=too-many-locals, too-many-branches
+    libraries: list[Library],
+) -> dict[Library, str]:
     # Install required libraries
     if not await check_for_internet():
         logger.warning("No internet connection, skipping library install")
@@ -61,6 +108,7 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
         if not potential_repos:
             raise HTTPException(404, f"Library {library} not found")
 
+        version_required = ""
         if library.find("@") != -1:
             version_required = library.split("@")[1]
         else:
@@ -74,10 +122,14 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
             installed_library_versions[library] = version_required
             continue
 
-        logger.info(f"Installing libraries: {library}@{version_required}")
+        logger.info("Installing libraries: %s@%s", library, version_required)
 
         repo = list(
-            filter(lambda x: x["version"] == version_required, potential_repos)
+            filter(
+                lambda x: x["version"]
+                == version_required,  # pylint: disable=cell-var-from-loop
+                potential_repos,
+            )
         )[0]
         if not repo:
             raise HTTPException(
@@ -85,65 +137,28 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
             )
 
         library_dir = f"./arduino-libs/{repo['name']}@{repo['version']}"
-        zip_response = requests.get(repo["url"])
-        library_zip = zipfile.ZipFile(io.BytesIO(zip_response.content))
+        library_zip = zipfile.ZipFile(
+            io.BytesIO(requests.get(repo["url"], timeout=5).content)
+        )
         # All the content is in ZIP/ZIP_NAME/ but we want it in ZIP/ so we extract it to the root
         # Only export any CPP files to lib/ dir
         os.makedirs(library_dir, exist_ok=True)
         os.mkdir(f"{library_dir}/src")
 
-        deps = []
-        in_deps = {}
-        deps_arches = {}
-        arches = []
         includes = {}
         dir_deps = {}
+        arches, deps, deps_arches, in_deps = await _install_library_zip(
+            library_zip, repo, library_dir
+        )
 
         for includes_board in fqbn_to_board.values():
             includes[includes_board] = ""
             dir_deps[includes_board] = ""
 
-        for file in library_zip.namelist():
-            if file.split(".")[-1] in ["cpp", "c", "h", "hpp"]:
-                # Check where we want to store the file if it is in a src/ directory everything after that should be preserved, if it is in the root we want tom perserve everything after the library name
-                new_file = file
-                root_folder = repo["archiveFileName"].removesuffix(".zip")
-                if new_file.startswith(f"{root_folder}/src/"):
-                    new_file = new_file.replace(f"{root_folder}/src/", "")
-                elif new_file == f"{root_folder}/" + new_file.split("/")[-1]:
-                    new_file = new_file.replace(f"{root_folder}/", "")
-                else:
-                    continue
-                # Recursively create the directories for the file
-                os.makedirs(
-                    path.dirname(f"{library_dir}/src/{new_file}"), exist_ok=True
-                )
-                async with aiofiles.open(f"{library_dir}/src/{new_file}", "w+") as _f:
-                    await _f.write(library_zip.read(file).decode())
-            elif file.endswith("library.properties"):
-                # Read only the dependencies and arches from the library.properties file and recursively call _install_libraries
-                library_props = _parse_library_properties(
-                    library_zip.read(file).decode()
-                )
-                arches = library_props.get("architectures", "*").split(",")
-                deps = library_props.get("depends", "").split(",")
-                if deps[0] == "":
-                    deps = []
-                if deps:
-                    for i, dep in enumerate(deps):
-                        deps[i] = dep.strip()
-                    in_deps = await _install_libraries(deps)
-                    for dep in deps:
-                        async with aiofiles.open(
-                            f"./arduino-libs/{dep}@{in_deps[dep]}/compiled_sources.json",
-                            "r",
-                        ) as _f:
-                            deps_arches[dep] = json.loads(await _f.read())["arches"]
-
         # Compile the library using platformio and store the compiled sources so we can use them later
         if deps or (not "*" in arches):
             for fqbn, board in fqbn_to_board.items():
-                if not fqbn.split(":")[1] in arches and not "*" in arches:
+                if fqbn.split(":")[1] not in arches and "*" not in arches:
                     continue
                 for dep in deps:
                     if board not in deps_arches[dep] and "*" not in deps_arches[dep]:
@@ -206,7 +221,7 @@ async def _compile_sketch(
                         "../", f"{CWD}/arduino-libs/"
                     )
             await _f.write(
-                f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nbuild_flags = -w {includes}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\nlib_deps = {libs}"
+                f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nbuild_flags = -w {includes}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\nlib_deps = {libs}"  # pylint: disable=line-too-long
             )
 
         compiler = await asyncio.create_subprocess_exec(
@@ -240,9 +255,10 @@ async def refresh_library_index():
     if not await check_for_internet():
         return
     logger.info("Updating library index...")
-    global library_index_json, library_indexed_json
+    global library_index_json, library_indexed_json  # pylint: disable=global-statement
     library_index_json = requests.get(
-        "https://downloads.arduino.cc/libraries/library_index.json"
+        "https://downloads.arduino.cc/libraries/library_index.json",
+        timeout=5,
     ).json()
     library_indexed_json = {}
     for index_library in library_index_json["libraries"]:
