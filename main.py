@@ -1,24 +1,18 @@
-""" Leaphy compiler and minifier backend webservice """
+"""Leaphy compiler and minifier backend webservice"""
 
 import asyncio
 import base64
-import json
-import os
 
-
-import aiofiles
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from python_minifier import minify
 
 from conf import settings
-from deps.cache import code_cache, get_code_cache_key, library_cache
-from deps.logs import logger
+from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
-from deps.tasks import startup
-from models import Sketch, Library, PythonProgram, Messages
-from sketch import _install_libraries, fqbn_to_platform, fqbn_to_board
+from models import Sketch, PythonProgram, Messages
+from deps.sketch import _install_libraries, _compile_sketch, startup
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -33,47 +27,6 @@ client = Groq(api_key=settings.groq_api_key)
 
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
-
-CWD = os.getcwd()
-
-async def _compile_sketch(sketch: Sketch, installed_libs:  dict[Library, str]) -> dict[str, str]:
-    dir_name = "/tmp/build"
-    sketch_path = f"{dir_name}/src/main.cpp"
-    platformio_config_path = f"{dir_name}/platformio.ini"
-
-    os.mkdir(f"{dir_name}/src")
-
-    # Write the sketch to a temp .ino file
-    async with aiofiles.open(sketch_path, "w+") as _f:
-        await _f.write("#include <SPI.h>\n#include <Wire.h>\n#include <Arduino.h>\n" + sketch.source_code)
-
-    async with aiofiles.open(platformio_config_path, "w+") as _f:
-        libs = "SPI\n\t\t\tWire"
-        includes = ""
-        for lib in installed_libs:
-            libs += f"\n\t\t\t{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/lib/lib "
-            includes += f"-I'{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/lib/lib' "
-            async with aiofiles.open(f"{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/compiled_sources.json", "r") as _f2:
-                data = json.loads(await _f2.read())
-                includes += data["include"][fqbn_to_board[sketch.board]].replace("../", f"{CWD}/arduino-libs/")
-                libs += "\n" + data["dirs"][fqbn_to_board[sketch.board]].replace("../", f"{CWD}/arduino-libs/")
-        await _f.write(f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nbuild_flags = -w {includes}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\nlib_deps = {libs}")
-
-    compiler = await asyncio.create_subprocess_exec(
-        "platformio",
-        "run",
-        stderr=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-        cwd=dir_name,
-    )
-    stdout, stderr = await compiler.communicate()
-    if compiler.returncode != 0:
-        logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
-        raise HTTPException(500, stderr.decode() + stdout.decode())
-
-    output_file = f"{dir_name}/.pio/build/build/firmware.hex"
-    async with aiofiles.open(output_file, "r", encoding="utf-8") as _f:
-        return {"hex": str(await _f.read())}
 
 
 @app.post("/compile/cpp")
