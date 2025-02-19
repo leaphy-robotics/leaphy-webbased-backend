@@ -23,7 +23,7 @@ CWD = os.getcwd()
 fqbn_to_board = {  # Mapping from fqbn to PlatformIO board
     "arduino:avr:uno": "uno",
     "arduino:avr:nano": "nanoatmega328",
-    "arduino:avr:mega": "ATmega2560",
+    "arduino:avr:mega": "megaADK",
     "arduino:esp32:nano_nora": "arduino_nano_esp32",
 }
 
@@ -43,6 +43,11 @@ def _get_latest_version(versions: list[str]) -> str:
     return max(versions, key=lambda x: tuple(map(int, x.split("."))))
 
 
+def _parse_library_properties(properties: str) -> dict[str, str]:
+    """Parse a library.properties file and return the key-value pairs"""
+    return dict(line.split("=") for line in properties.split("\n") if "=" in line)
+
+
 async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
     # Install required libraries
     if not await check_for_internet():
@@ -55,6 +60,7 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
         potential_repos = library_indexed_json.get(library)
         if not potential_repos:
             raise HTTPException(404, f"Library {library} not found")
+
         if library.find("@") != -1:
             version_required = library.split("@")[1]
         else:
@@ -68,16 +74,12 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
             installed_library_versions[library] = version_required
             continue
 
-        if not potential_repos:
-            raise HTTPException(404, f"Library {library} not found")
+        logger.info(f"Installing libraries: {library}@{version_required}")
 
-        logger.info("Installing libraries: %s", library)
-
-        for potential_repo in potential_repos:
-            if potential_repo["version"] == version_required:
-                repo = potential_repo
-                break
-        else:
+        repo = list(
+            filter(lambda x: x["version"] == version_required, potential_repos)
+        )[0]
+        if not repo:
             raise HTTPException(
                 404, f"Library {library} not found, with version {version_required}"
             )
@@ -87,102 +89,75 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
         library_zip = zipfile.ZipFile(io.BytesIO(zip_response.content))
         # All the content is in ZIP/ZIP_NAME/ but we want it in ZIP/ so we extract it to the root
         # Only export any CPP files to lib/ dir
-        os.mkdir(library_dir)
+        os.makedirs(library_dir, exist_ok=True)
         os.mkdir(f"{library_dir}/src")
 
-        dependencies = []
-        installed_dependency = {}
-        dependencies_arches = {}
-        supported_arches = []
+        deps = []
+        in_deps = {}
+        deps_arches = {}
+        arches = []
         includes = {}
-        dir_dependencies = {}
+        dir_deps = {}
 
         for includes_board in fqbn_to_board.values():
             includes[includes_board] = ""
-            dir_dependencies[includes_board] = ""
+            dir_deps[includes_board] = ""
 
         for file in library_zip.namelist():
-            if (
-                file.endswith(".cpp")
-                or file.endswith(".h")
-                or file.endswith(".c")
-                or file.endswith(".hpp")
-            ):
+            if file.split(".")[-1] in ["cpp", "c", "h", "hpp"]:
                 # Check where we want to store the file if it is in a src/ directory everything after that should be preserved, if it is in the root we want tom perserve everything after the library name
-                actual_file = file
-                if file.startswith(
-                    f"{repo['archiveFileName'].removesuffix(".zip")}/src/"
-                ):
-                    file = file.replace(
-                        f"{repo['archiveFileName'].removesuffix('.zip')}/src/", ""
-                    )
-                elif (
-                    file
-                    == f"{repo['archiveFileName'].removesuffix('.zip')}/"
-                    + file.split("/")[-1]
-                ):
-                    file = file.replace(
-                        f"{repo['archiveFileName'].removesuffix('.zip')}/", ""
-                    )
+                new_file = file
+                root_folder = repo["archiveFileName"].removesuffix(".zip")
+                if new_file.startswith(f"{root_folder}/src/"):
+                    new_file = new_file.replace(f"{root_folder}/src/", "")
+                elif new_file == f"{root_folder}/" + new_file.split("/")[-1]:
+                    new_file = new_file.replace(f"{root_folder}/", "")
                 else:
                     continue
                 # Recursively create the directories for the file
-                os.makedirs(path.dirname(f"{library_dir}/src/{file}"), exist_ok=True)
-                async with aiofiles.open(f"{library_dir}/src/{file}", "w+") as _f:
-                    await _f.write(library_zip.read(actual_file).decode())
+                os.makedirs(
+                    path.dirname(f"{library_dir}/src/{new_file}"), exist_ok=True
+                )
+                async with aiofiles.open(f"{library_dir}/src/{new_file}", "w+") as _f:
+                    await _f.write(library_zip.read(file).decode())
             elif file.endswith("library.properties"):
                 # Read only the dependencies and arches from the library.properties file and recursively call _install_libraries
-                library_properties = library_zip.read(file).decode()
-                supported_arches = [
-                    line.split("=")[1]
-                    for line in library_properties.split("\n")
-                    if line.startswith("architectures=")
-                ]
-                supported_arches = supported_arches[0].split(",")
-                dependencies = [
-                    line.split("=")[1]
-                    for line in library_properties.split("\n")
-                    if line.startswith("depends=")
-                ]
-                if dependencies:
-                    dependencies = dependencies[0].split(",")
-                    for i, dependency in enumerate(dependencies):
-                        dependencies[i] = dependency.strip()
-
-                    installed_dependency = await _install_libraries(dependencies)
-
-                    for dependency in dependencies:
+                library_props = _parse_library_properties(
+                    library_zip.read(file).decode()
+                )
+                arches = library_props.get("architectures", "*").split(",")
+                deps = library_props.get("depends", "").split(",")
+                if deps[0] == "":
+                    deps = []
+                if deps:
+                    for i, dep in enumerate(deps):
+                        deps[i] = dep.strip()
+                    in_deps = await _install_libraries(deps)
+                    for dep in deps:
                         async with aiofiles.open(
-                            f"./arduino-libs/{dependency}@{installed_dependency[dependency]}/compiled_sources.json",
+                            f"./arduino-libs/{dep}@{in_deps[dep]}/compiled_sources.json",
                             "r",
                         ) as _f:
-                            dependencies_arches[dependency] = json.loads(
-                                await _f.read()
-                            )["arches"]
+                            deps_arches[dep] = json.loads(await _f.read())["arches"]
 
         # Compile the library using platformio and store the compiled sources so we can use them later
-        if dependencies or (not "*" in supported_arches):
+        if deps or (not "*" in arches):
             for fqbn, board in fqbn_to_board.items():
-                if fqbn.split(":")[1] in supported_arches or "*" in supported_arches:
-                    for dependency in dependencies:
-                        if (
-                            board in dependencies_arches[dependency]
-                            or "*" in dependencies_arches[dependency]
-                        ):
-                            dir_path = (
-                                f"../{dependency}@{installed_dependency[dependency]}/"
-                            )
-                            dir_dependencies[board] += f"\t\t\t{dir_path}src\n"
-                            includes[
-                                board
-                            ] += f"-I'../{dependency}@{installed_dependency[dependency]}/src/' "
-                            async with aiofiles.open(
-                                f"./arduino-libs/{dependency}@{installed_dependency[dependency]}/compiled_sources.json",
-                                "r",
-                            ) as _f:
-                                data = json.loads(await _f.read())
-                                dir_dependencies[board] += data["dirs"][board]
-                                includes[board] += data["include"][board]
+                if not fqbn.split(":")[1] in arches and not "*" in arches:
+                    continue
+                for dep in deps:
+                    if board not in deps_arches[dep] and "*" not in deps_arches[dep]:
+                        continue
+                    dir_path = f"../{dep}@{in_deps[dep]}/"
+                    dir_deps[board] += f"\t\t\t{dir_path}src\n"
+                    includes[board] += f"-I'../{dep}@{in_deps[dep]}/src/' "
+                    async with aiofiles.open(
+                        f"./arduino-libs/{dep}@{in_deps[dep]}/compiled_sources.json",
+                        "r",
+                    ) as _f:
+                        data = json.loads(await _f.read())
+                        dir_deps[board] += data["dirs"][board]
+                        includes[board] += data["include"][board]
 
         # Store the compiled sources in the library cache
         async with aiofiles.open(f"{library_dir}/compiled_sources.json", "w+") as _f:
@@ -190,8 +165,8 @@ async def _install_libraries(libraries: list[Library]) -> dict[Library, str]:
                 json.dumps(
                     {
                         "include": includes,
-                        "dirs": dir_dependencies,
-                        "arches": supported_arches,
+                        "dirs": dir_deps,
+                        "arches": arches,
                     }
                 )
             )
