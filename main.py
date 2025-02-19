@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import json
 import os
 
 
@@ -17,7 +18,7 @@ from deps.logs import logger
 from deps.session import Session, compile_sessions, llm_tokens
 from deps.tasks import startup
 from models import Sketch, Library, PythonProgram, Messages
-from sketch import _install_libraries
+from sketch import _install_libraries, fqbn_to_platform, fqbn_to_board
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -33,11 +34,9 @@ client = Groq(api_key=settings.groq_api_key)
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 
+CWD = os.getcwd()
 
-
-
-
-async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
+async def _compile_sketch(sketch: Sketch, installed_libs:  dict[Library, str]) -> dict[str, str]:
     dir_name = "/tmp/build"
     sketch_path = f"{dir_name}/src/main.cpp"
     platformio_config_path = f"{dir_name}/platformio.ini"
@@ -46,10 +45,19 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
 
     # Write the sketch to a temp .ino file
     async with aiofiles.open(sketch_path, "w+") as _f:
-        await _f.write("#include <Arduino.h>\n" + sketch.source_code)
+        await _f.write("#include <SPI.h>\n#include <Wire.h>\n#include <Arduino.h>\n" + sketch.source_code)
 
     async with aiofiles.open(platformio_config_path, "w+") as _f:
-        await _f.write(f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\n")
+        libs = "SPI\n\t\t\tWire"
+        includes = ""
+        for lib in installed_libs:
+            libs += f"\n\t\t\t{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/lib/lib "
+            includes += f"-I'{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/lib/lib' "
+            async with aiofiles.open(f"{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/compiled_sources.json", "r") as _f2:
+                data = json.loads(await _f2.read())
+                includes += data["include"][fqbn_to_board[sketch.board]].replace("../", f"{CWD}/arduino-libs/")
+                libs += "\n" + data["dirs"][fqbn_to_board[sketch.board]].replace("../", f"{CWD}/arduino-libs/")
+        await _f.write(f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nbuild_flags = -w {includes}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\nlib_deps = {libs}")
 
     compiler = await asyncio.create_subprocess_exec(
         "platformio",
@@ -64,7 +72,7 @@ async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
         raise HTTPException(500, stderr.decode() + stdout.decode())
 
     output_file = f"{dir_name}/.pio/build/build/firmware.hex"
-    async with aiofiles.open(output_file, "rb") as _f:
+    async with aiofiles.open(output_file, "r", encoding="utf-8") as _f:
         return {"hex": str(await _f.read())}
 
 
@@ -83,8 +91,8 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
 
         # Nope -> compile and store in cache
         async with semaphore:
-            await _install_libraries(sketch.libraries)
-            result = await _compile_sketch(sketch)
+            installed_libs = await _install_libraries(sketch.libraries)
+            result = await _compile_sketch(sketch, installed_libs)
             code_cache[cache_key] = result
             return result
     finally:
