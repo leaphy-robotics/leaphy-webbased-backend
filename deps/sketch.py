@@ -256,9 +256,11 @@ async def refresh_library_index():
         return
     logger.info("Updating library index...")
     global library_index_json, library_indexed_json  # pylint: disable=global-statement
-    library_index_json = (await httpx.get(
-        "https://downloads.arduino.cc/libraries/library_index.json",
-    )).json()
+    library_index_json = (
+        await httpx.get(
+            "https://downloads.arduino.cc/libraries/library_index.json",
+        )
+    ).json()
     library_indexed_json = {}
     for index_library in library_index_json["libraries"]:
         if index_library["name"] not in library_indexed_json:
