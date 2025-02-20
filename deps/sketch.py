@@ -137,9 +137,10 @@ async def _install_libraries(  # pylint: disable=too-many-locals, too-many-branc
             )
 
         library_dir = f"./arduino-libs/{repo['name']}@{repo['version']}"
-        library_zip = zipfile.ZipFile(
-            io.BytesIO((await httpx.get(repo["url"])).content)
-        )
+        async with httpx.AsyncClient() as client:
+            library_zip = zipfile.ZipFile(
+                io.BytesIO((await client.get(repo["url"])).content)
+            )
         # All the content is in ZIP/ZIP_NAME/ but we want it in ZIP/ so we extract it to the root
         # Only export any CPP files to lib/ dir
         os.makedirs(library_dir, exist_ok=True)
@@ -256,11 +257,8 @@ async def refresh_library_index():
         return
     logger.info("Updating library index...")
     global library_index_json, library_indexed_json  # pylint: disable=global-statement
-    library_index_json = (
-        await httpx.get(
-            "https://downloads.arduino.cc/libraries/library_index.json",
-        )
-    ).json()
+    async with httpx.AsyncClient() as client:
+        library_index_json = (await client.get('https://downloads.arduino.cc/libraries/library_index.json')).json()
     library_indexed_json = {}
     for index_library in library_index_json["libraries"]:
         if index_library["name"] not in library_indexed_json:
