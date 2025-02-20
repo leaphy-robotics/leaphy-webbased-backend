@@ -9,6 +9,7 @@ import re
 import zipfile
 from os import path
 
+import semver
 import aiofiles
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -40,7 +41,11 @@ library_indexed_json = {}
 
 def _get_latest_version(versions: list[str]) -> str:
     """Return the latest version from a list of semantically versioned strings"""
-    return max(versions, key=lambda x: tuple(map(int, x.split("."))))
+    max_version = versions[0]
+    for version in versions:
+        if semver.compare(version, max_version) == 1:
+            max_version = version
+    return max_version
 
 
 def _parse_library_properties(properties: str) -> dict[str, str]:
@@ -70,8 +75,10 @@ async def _install_library_zip(
                 continue
             # Recursively create the directories for the file
             os.makedirs(path.dirname(f"{library_dir}/src/{new_file}"), exist_ok=True)
-            async with aiofiles.open(f"{library_dir}/src/{new_file}", "w+") as _f:
-                await _f.write(library_zip.read(file).decode())
+            async with aiofiles.open(
+                f"{library_dir}/src/{new_file}", "w+"
+            ) as source_file:
+                await source_file.write(library_zip.read(file).decode())
         elif file.endswith("library.properties"):
             # Read only the dependencies and arches from the library.properties file
             # Recursively call _install_libraries
@@ -88,8 +95,10 @@ async def _install_library_zip(
                     async with aiofiles.open(
                         f"./arduino-libs/{dep}@{in_deps[dep]}/compiled_sources.json",
                         "r",
-                    ) as _f:
-                        deps_arches[dep] = json.loads(await _f.read())["arches"]
+                    ) as compiled_sources:
+                        deps_arches[dep] = json.loads(await compiled_sources.read())[
+                            "arches"
+                        ]
     return arches, deps, deps_arches, in_deps
 
 
@@ -109,7 +118,7 @@ async def _install_libraries(  # pylint: disable=too-many-locals, too-many-branc
             raise HTTPException(404, f"Library {library} not found")
 
         version_required = ""
-        if library.find("@") != -1:
+        if "@" in library:
             version_required = library.split("@")[1]
         else:
             versions = [
@@ -191,7 +200,7 @@ async def _install_libraries(  # pylint: disable=too-many-locals, too-many-branc
     return installed_library_versions
 
 
-async def _compile_sketch(
+async def _compile_sketch(  # pylint: disable=too-many-locals
     sketch: Sketch, installed_libs: dict[Library, str]
 ) -> dict[str, str]:
     async with aiofiles.tempfile.TemporaryDirectory() as dir_name:
@@ -201,10 +210,10 @@ async def _compile_sketch(
         os.mkdir(f"{dir_name}/src")
 
         # Write the sketch to a temp .ino file
-        async with aiofiles.open(sketch_path, "w+") as _f:
-            await _f.write("#include <Arduino.h>\n" + sketch.source_code)
+        async with aiofiles.open(sketch_path, "w+") as platform_ini:
+            await platform_ini.write("#include <Arduino.h>\n" + sketch.source_code)
 
-        async with aiofiles.open(platformio_config_path, "w+") as _f:
+        async with aiofiles.open(platformio_config_path, "w+") as platformio_ini:
             libs = ""
             includes = ""
             for lib in installed_libs:
@@ -213,15 +222,15 @@ async def _compile_sketch(
                 async with aiofiles.open(
                     f"{CWD}/arduino-libs/{lib}@{installed_libs[lib]}/compiled_sources.json",
                     "r",
-                ) as _f2:
-                    data = json.loads(await _f2.read())
+                ) as compiled_sources:
+                    data = json.loads(await compiled_sources.read())
                     includes += data["include"][fqbn_to_board[sketch.board]].replace(
                         "../", f"{CWD}/arduino-libs/"
                     )
                     libs += "\n" + data["dirs"][fqbn_to_board[sketch.board]].replace(
                         "../", f"{CWD}/arduino-libs/"
                     )
-            await _f.write(
+            await platformio_ini.write(
                 f"[env:build]\nplatform = {fqbn_to_platform[sketch.board]}\nbuild_flags = -w {includes}\nboard = {fqbn_to_board[sketch.board]}\nframework = arduino\nlib_deps = {libs}"  # pylint: disable=line-too-long
             )
 
@@ -238,8 +247,8 @@ async def _compile_sketch(
             raise HTTPException(500, stderr.decode() + stdout.decode())
 
         output_file = f"{dir_name}/.pio/build/build/firmware.hex"
-        async with aiofiles.open(output_file, "r", encoding="utf-8") as _f:
-            return {"hex": str(await _f.read())}
+        async with aiofiles.open(output_file, "r", encoding="utf-8") as hex_file:
+            return {"hex": str(await hex_file.read())}
 
 
 @asynccontextmanager

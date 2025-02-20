@@ -9,3 +9,4 @@ pyserial==3.5
 groq==0.18.0
 httpx==0.28.1
 platformio==6.1.17
+semver==3.0.4
