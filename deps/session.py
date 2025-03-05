@@ -1,4 +1,4 @@
-""" Manage session concurrency """
+"""Manage session concurrency"""
 
 import uuid
 from typing import Annotated

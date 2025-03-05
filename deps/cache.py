@@ -1,4 +1,4 @@
-""" Code for caching compiled C++ code """
+"""Code for caching compiled C++ code"""
 
 from hashlib import md5
 

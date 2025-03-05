@@ -1,4 +1,4 @@
-""" FastAPI models """
+"""FastAPI models"""
 
 from typing import Annotated
 
