@@ -48,8 +48,8 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
         async with semaphore:
             global cur_tasks  # pylint: disable=global-statement
             await install_libraries(sketch.libraries, sketch.board)
-            result = await compile_sketch(sketch, cur_tasks)
             cur_tasks += 1
+            result = await compile_sketch(sketch, cur_tasks - 1)
             code_cache[cache_key] = result
             cur_tasks -= 1
             return result
