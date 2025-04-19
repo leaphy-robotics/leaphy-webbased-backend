@@ -31,9 +31,10 @@ fqbn_to_platform = {  # Mapping from fqbn to PlatformIO platform
 }
 
 
-async def _install_libraries(  # pylint: disable=too-many-locals, too-many-branches
+async def install_libraries(  # pylint: disable=too-many-locals, too-many-branches
     libraries: list[Library], fqbn: str
 ) -> dict[Library, str]:
+    """Install libraries for the given sketch"""
     for library in libraries:
         installer = await asyncio.create_subprocess_exec(
             "platformio",
@@ -71,9 +72,10 @@ async def _install_libraries(  # pylint: disable=too-many-locals, too-many-branc
                 continue
 
 
-async def _compile_sketch(  # pylint: disable=too-many-locals
+async def compile_sketch(  # pylint: disable=too-many-locals
     sketch: Sketch, i: int
 ) -> dict[str, str]:
+    """Compile the sketch and return the result in HEX format or as a binary blob"""
     sketch_path = f"compiles/src{i}/main.cpp"
 
     # Write the sketch to a temp .ino file
@@ -118,7 +120,7 @@ async def startup(_app: FastAPI) -> None:
     """Startup context manager"""
     platformio_ini_text = "[env]\nlib_compat_mode = strict\nlib_deps =\n"
     for fqbn, board in fqbn_to_board.items():
-        platformio_ini_text += f"\n[env:{board}]\nframework = arduino\nplatform = {fqbn_to_platform[fqbn]}\nboard = {board}\n" # pylint: disable=line-too-long
+        platformio_ini_text += f"\n[env:{board}]\nframework = arduino\nplatform = {fqbn_to_platform[fqbn]}\nboard = {board}\n"  # pylint: disable=line-too-long
 
     # Make sure compile dir exists
     for i in range(settings.max_concurrent_tasks):

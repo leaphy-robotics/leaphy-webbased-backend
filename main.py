@@ -11,7 +11,7 @@ from python_minifier import minify
 from conf import settings
 from models import Sketch, PythonProgram, Messages
 
-from deps.sketch import _install_libraries, _compile_sketch, startup
+from deps.sketch import install_libraries, compile_sketch, startup
 from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
 
@@ -28,7 +28,7 @@ client = Groq(api_key=settings.groq_api_key)
 
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
-cur_tasks = 0 # pylint: disable=invalid-name
+cur_tasks = 0  # pylint: disable=invalid-name
 
 
 @app.post("/compile/cpp")
@@ -46,9 +46,9 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
 
         # Nope -> compile and store in cache
         async with semaphore:
-            global cur_tasks # pylint: disable=global-statement
-            await _install_libraries(sketch.libraries, sketch.board)
-            result = await _compile_sketch(sketch, cur_tasks)
+            global cur_tasks  # pylint: disable=global-statement
+            await install_libraries(sketch.libraries, sketch.board)
+            result = await compile_sketch(sketch, cur_tasks)
             cur_tasks += 1
             code_cache[cache_key] = result
             cur_tasks -= 1
