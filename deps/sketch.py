@@ -3,9 +3,7 @@
 import asyncio
 import base64
 import os
-import threading
 from contextlib import asynccontextmanager
-from math import floor
 
 import aiofiles
 from fastapi import FastAPI, HTTPException
@@ -100,7 +98,7 @@ async def compile_sketch(  # pylint: disable=too-many-locals
         "-e",
         f"{fqbn_to_board[sketch.board]}",
         "-j",
-        str(floor(settings.max_concurrent_tasks / threading.active_count())),
+        str(settings.threads_per_platformio_compile),
         stderr=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         cwd=f"{CWD}/compiles/",
