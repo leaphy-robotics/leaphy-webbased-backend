@@ -9,6 +9,7 @@ import aiofiles
 from fastapi import FastAPI, HTTPException
 
 from conf import settings
+from deps.cache import library_cache
 from deps.logs import logger
 from models import Library, Sketch
 
@@ -29,7 +30,6 @@ fqbn_to_platform = {  # Mapping from fqbn to PlatformIO platform
 }
 
 CWD = settings.cwd
-installed_libraries = set()  # Set of installed libraries
 
 
 async def install_libraries(  # pylint: disable=too-many-locals, too-many-branches
@@ -37,7 +37,7 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
 ) -> dict[Library, str]:
     """Install libraries for the given sketch"""
     for library in libraries:
-        if library in installed_libraries:
+        if library := library_cache.get(library):
             continue
         installer = await asyncio.create_subprocess_exec(
             "platformio",
@@ -77,7 +77,7 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
                     stderr.decode() + stdout.decode(),
                 )
                 continue
-            installed_libraries.add(library)
+            library_cache[library] = 1
 
 
 async def compile_sketch(  # pylint: disable=too-many-locals
