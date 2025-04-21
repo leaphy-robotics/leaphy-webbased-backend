@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env")
 
-    arduino_cli_path: str = "arduino-cli"
+    cwd: str = "."
     cors_origins: list[str] = ["*"]
     cors_origin_regex: str | None = None
     log_level: str = "INFO"

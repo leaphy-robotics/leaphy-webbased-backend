@@ -28,7 +28,7 @@ client = Groq(api_key=settings.groq_api_key)
 
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
-cur_tasks = list(range(settings.max_concurrent_tasks))
+available_task_ids = list(range(settings.max_concurrent_tasks))
 
 
 @app.post("/compile/cpp")
@@ -46,11 +46,11 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
 
         # Nope -> compile and store in cache
         async with semaphore:
-            i = cur_tasks.pop(0)
+            cur_task = available_task_ids.pop(0)
             await install_libraries(sketch.libraries, sketch.board)
-            result = await compile_sketch(sketch, i)
+            result = await compile_sketch(sketch, cur_task)
             code_cache[cache_key] = result
-            cur_tasks.append(i)
+            available_task_ids.append(cur_task)
             return result
     finally:
         compile_sessions[session_id] -= 1
