@@ -100,7 +100,7 @@ async def compile_sketch(sketch: Sketch, task_num: int) -> dict[str, str]:
         async with aiofiles.open(output_file + "bin", "rb") as bin_file:
             result["sketch"] = base64.b64encode(await bin_file.read()).decode("utf-8")
     if os.path.exists(output_file + "uf2"):
-        async with aiofiles.open(output_file, "rb") as elf_file:
+        async with aiofiles.open(output_file + "uf2", "rb") as elf_file:
             result["sketch"] = base64.b64encode(await elf_file.read()).decode("utf-8")
     return result
 
