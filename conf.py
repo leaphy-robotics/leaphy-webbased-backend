@@ -1,4 +1,4 @@
-""" Configuration settings """
+"""Configuration settings"""
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -8,7 +8,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env")
 
-    arduino_cli_path: str = "arduino-cli"
+    platformio_data_dir: str = "./compiles"
+    threads_per_platformio_compile: int = 1
     cors_origins: list[str] = ["*"]
     cors_origin_regex: str | None = None
     log_level: str = "INFO"

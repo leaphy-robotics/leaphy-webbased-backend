@@ -3,3 +3,4 @@ arduino-cli
 venv/
 .env
 .idea
+compiles/

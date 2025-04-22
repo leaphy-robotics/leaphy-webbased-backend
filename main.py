@@ -1,23 +1,19 @@
-""" Leaphy compiler and minifier backend webservice """
+"""Leaphy compiler and minifier backend webservice"""
 
 import asyncio
 import base64
-import tempfile
-from os import path
 
-import aiofiles
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from python_minifier import minify
 
 from conf import settings
-from deps.cache import code_cache, get_code_cache_key, library_cache
-from deps.logs import logger
+from models import Sketch, PythonProgram, Messages
+
+from deps.sketch import install_libraries, compile_sketch, startup
+from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
-from deps.tasks import startup
-from deps.utils import check_for_internet
-from models import Sketch, Library, PythonProgram, Messages
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -32,79 +28,7 @@ client = Groq(api_key=settings.groq_api_key)
 
 # Limit compiler concurrency to prevent overloading the vm
 semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
-
-
-async def _install_libraries(libraries: list[Library]) -> None:
-    # Install required libraries
-    if not await check_for_internet():
-        logger.warning("No internet connection, skipping library install")
-        return
-    for library in libraries:
-        if library_cache.get(library):
-            continue
-
-        logger.info("Installing libraries: %s", library)
-        installer = await asyncio.create_subprocess_exec(
-            settings.arduino_cli_path,
-            "lib",
-            "install",
-            library,
-            stderr=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await installer.communicate()
-        if installer.returncode != 0:
-            logger.error(
-                "Failed to install library: %s", stderr.decode() + stdout.decode()
-            )
-            raise HTTPException(
-                500, f"Failed to install library: {stderr.decode() + stdout.decode()}"
-            )
-        library_cache[library] = 1
-
-
-async def _compile_sketch(sketch: Sketch) -> dict[str, str]:
-    with tempfile.TemporaryDirectory() as dir_name:
-        file_name = f"{path.basename(dir_name)}.ino"
-        sketch_path = f"{dir_name}/{file_name}"
-
-        # Write the sketch to a temp .ino file
-        async with aiofiles.open(sketch_path, "w+") as _f:
-            await _f.write(sketch.source_code)
-
-        compiler = await asyncio.create_subprocess_exec(
-            settings.arduino_cli_path,
-            "compile",
-            "--fqbn",
-            sketch.board,
-            sketch_path,
-            "--output-dir",
-            dir_name,
-            stderr=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await compiler.communicate()
-        if compiler.returncode != 0:
-            logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
-            raise HTTPException(500, stderr.decode() + stdout.decode())
-
-        file_result = {}
-
-        files = [("hex", ".hex")]
-        for file in files:
-            if path.exists(f"{sketch_path}{file[1]}"):
-                async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
-                    file_result[file[0]] = await _f.read()
-
-        binary_files = [("sketch", ".bin"), ("sketch", ".uf2")]
-        for file in binary_files:
-            if path.exists(f"{sketch_path}{file[1]}"):
-                async with aiofiles.open(f"{sketch_path}{file[1]}", "rb") as _f:
-                    file_result[file[0]] = base64.b64encode(await _f.read()).decode(
-                        "utf-8"
-                    )
-
-        return file_result
+available_task_ids = list(range(settings.max_concurrent_tasks))
 
 
 @app.post("/compile/cpp")
@@ -122,9 +46,11 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
 
         # Nope -> compile and store in cache
         async with semaphore:
-            await _install_libraries(sketch.libraries)
-            result = await _compile_sketch(sketch)
+            task_id = available_task_ids.pop(0)
+            await install_libraries(sketch.libraries, sketch.board)
+            result = await compile_sketch(sketch, task_id)
             code_cache[cache_key] = result
+            available_task_ids.append(task_id)
             return result
     finally:
         compile_sessions[session_id] -= 1
