@@ -30,15 +30,14 @@ fqbn_to_platform = {  # Mapping from fqbn to PlatformIO platform
     "arduino:mbed_nano:nanorp2040connect": "raspberrypi",
 }
 
-CWD = settings.cwd
 
-
-async def install_libraries(  # pylint: disable=too-many-locals, too-many-branches
-    libraries: list[Library], fqbn: str
-) -> dict[Library, str]:
+async def install_libraries(libraries: list[Library], fqbn: str):
     """Install libraries for the given sketch"""
+    if not fqbn in fqbn_to_board:
+        raise HTTPException(422, "Unsupported fqbn")
+    pio_environment = fqbn_to_board[fqbn]
     for library in libraries:
-        if library := library_cache.get(library):
+        if library_cache.get(library + pio_environment):
             continue
         installer = await asyncio.create_subprocess_exec(
             "platformio",
@@ -59,12 +58,11 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
                 "Library install failed. Error: %s",
                 stderr.decode() + stdout.decode(),
             )
+            continue
         library_cache[library + pio_environment] = 1
 
 
-async def compile_sketch(
-    sketch: Sketch, task_num: int
-) -> dict[str, str]:
+async def compile_sketch(sketch: Sketch, task_num: int) -> dict[str, str]:
     """Compile the sketch and return the result in HEX format or as a binary blob"""
     sketch_path = f"{settings.platformio_data_dir}/src{task_num}/main.cpp"
 
