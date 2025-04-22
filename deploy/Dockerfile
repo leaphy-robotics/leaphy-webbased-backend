@@ -18,9 +18,10 @@ COPY --chown=arduino:arduino deps /app/deps
 COPY --chown=arduino:arduino deploy/start.sh /app/start.sh
 RUN mkdir -p /app/compiles
 
-RUN platformio pkg install --platform espressif32@6.10.0 --storage-dir /app/compiles
-RUN platformio pkg install --platform atmelavr@5.1.0 --storage-dir /app/compiles
-RUN platformio pkg install --platform raspberrypi@1.16.0 --storage-dir /app/compiles
+RUN python3 -m venv /app/venv && . /app/venv/bin/activate && \
+    platformio pkg install --platform espressif32@6.10.0 --storage-dir /app/compiles && \
+    platformio pkg install --platform atmelavr@5.1.0 --storage-dir /app/compiles && \
+    platformio pkg install --platform raspberrypi@1.16.0 --storage-dir /app/compiles
 
 RUN chmod +x /app/start.sh
 
