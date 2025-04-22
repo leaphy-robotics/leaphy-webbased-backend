@@ -23,11 +23,11 @@ fqbn_to_board = {  # Mapping from fqbn to PlatformIO board
 }
 
 fqbn_to_platform = {  # Mapping from fqbn to PlatformIO platform
-    "arduino:avr:uno": "atmelavr",
-    "arduino:avr:nano": "atmelavr",
-    "arduino:avr:mega": "atmelavr",
-    "arduino:esp32:nano_nora": "espressif32",
-    "arduino:mbed_nano:nanorp2040connect": "raspberrypi",
+    "arduino:avr:uno": "atmelavr@5.1.0",
+    "arduino:avr:nano": "atmelavr@5.1.0",
+    "arduino:avr:mega": "atmelavr@5.1.0",
+    "arduino:esp32:nano_nora": "espressif32@6.10.0",
+    "arduino:mbed_nano:nanorp2040connect": "raspberrypi@1.16.0",
 }
 
 
