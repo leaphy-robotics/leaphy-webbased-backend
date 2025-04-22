@@ -29,7 +29,7 @@ fqbn_to_platform = {  # Mapping from fqbn to PlatformIO platform
     "arduino:mbed_nano:nanorp2040connect": "raspberrypi",
 }
 
-CWD = settings.cwd
+platformio_data_dir = settings.platformio_data_dir
 
 
 async def install_libraries(  # pylint: disable=too-many-locals, too-many-branches
@@ -37,7 +37,7 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
 ) -> dict[Library, str]:
     """Install libraries for the given sketch"""
     for library in libraries:
-        if library := library_cache.get(library):
+        if library in library_cache:
             continue
         installer = await asyncio.create_subprocess_exec(
             "platformio",
@@ -48,7 +48,7 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
             "--no-save",
             stderr=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            cwd=f"{CWD}/compiles",
+            cwd=f"{platformio_data_dir}/compiles",
         )
         stdout, stderr = await installer.communicate()
         if installer.returncode != 0:
@@ -68,7 +68,7 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
                 fqbn_to_platform[fqbn],
                 stderr=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
-                cwd=f"{CWD}/compiles",
+                cwd=f"{platformio_data_dir}/compiles",
             )
             stdout, stderr = await installer.communicate()
             if installer.returncode != 0:
@@ -77,7 +77,7 @@ async def install_libraries(  # pylint: disable=too-many-locals, too-many-branch
                     stderr.decode() + stdout.decode(),
                 )
                 continue
-            library_cache[library] = 1
+        library_cache[library] = 1
 
 
 async def compile_sketch(  # pylint: disable=too-many-locals
@@ -94,14 +94,14 @@ async def compile_sketch(  # pylint: disable=too-many-locals
         "platformio",
         "run",
         "-c",
-        f"{CWD}/compiles/platformio{task_num}.ini",
+        f"{platformio_data_dir}/compiles/platformio{task_num}.ini",
         "-e",
         f"{fqbn_to_board[sketch.board]}",
         "-j",
         str(settings.threads_per_platformio_compile),
         stderr=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
-        cwd=f"{CWD}/compiles/",
+        cwd=f"{platformio_data_dir}/compiles/",
     )
     stdout, stderr = await compiler.communicate()
     if compiler.returncode != 0:
@@ -136,14 +136,14 @@ async def setup_platformio():
         os.makedirs(f"compiles/src{task_num}", exist_ok=True)
         # Generate the platformio{i}.ini file
         async with aiofiles.open(
-            f"compiles/platformio{task_num}.ini", "w+"
+            f"{platformio_data_dir}/compiles/platformio{task_num}.ini", "w+"
         ) as platform_ini:
             await platform_ini.write(
                 platformio_ini_text
                 + f"\n[platformio]\nsrc_dir = src{task_num}\nbuild_dir = build{task_num}"
             )
     # Make compiles/platformio.ini
-    async with aiofiles.open("compiles/platformio.ini", "w+") as default_platform_ini:
+    async with aiofiles.open(f"{platformio_data_dir}/compiles/platformio.ini", "w+") as default_platform_ini:
         await default_platform_ini.write(platformio_ini_text)
 
 
