@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env")
 
-    platformio_data_dir: str = "."
+    platformio_data_dir: str = "./compiles"
     threads_per_platformio_compile: int = 1
     cors_origins: list[str] = ["*"]
     cors_origin_regex: str | None = None
