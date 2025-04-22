@@ -16,7 +16,7 @@ from models import Library, Sketch
 fqbn_to_board = {  # Mapping from fqbn to PlatformIO board
     "arduino:avr:uno": "uno",
     "arduino:avr:nano": "nanoatmega328",
-    "arduino:avr:mega": "megaADK",
+    "arduino:avr:mega": "megaatmega2560",
     "arduino:esp32:nano_nora": "arduino_nano_esp32",
     "arduino:mbed_nano:nanorp2040connect": "nanorp2040connect",
 }
