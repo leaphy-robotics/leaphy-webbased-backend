@@ -145,7 +145,9 @@ async def setup_platformio() -> None:
         cwd=settings.platformio_data_dir,
     )
     stdout, stderr = await install.communicate()
-    logger.info("Pre-installed all platforms:\n %s, %s", stdout.decode(), stderr.decode())
+    logger.info(
+        "Pre-installed all platforms:\n %s, %s", stdout.decode(), stderr.decode()
+    )
 
 
 @asynccontextmanager
