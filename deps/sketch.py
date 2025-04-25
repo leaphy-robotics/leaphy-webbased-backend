@@ -37,6 +37,7 @@ async def install_libraries(libraries: list[Library], fqbn: str):
         raise HTTPException(422, "Unsupported fqbn")
     pio_environment = fqbn_to_board[fqbn]
     for library in libraries:
+        logger.info("Installing library %s in environment %s", library, pio_environment)
         if library_cache.get(library + pio_environment):
             continue
         installer = await asyncio.create_subprocess_exec(
@@ -123,13 +124,30 @@ async def setup_platformio() -> None:
         ) as platform_ini:
             await platform_ini.write(
                 platformio_ini_text
-                + f"\n[platformio]\nsrc_dir = src{task_num}\nbuild_dir = build{task_num}"
+                + f"\n[platformio]\nsrc_dir = src{task_num}\nbuild_dir = build{task_num}\n"
             )
     # Make platformio.ini
     async with aiofiles.open(
         f"{settings.platformio_data_dir}/platformio.ini", "w+"
     ) as default_platform_ini:
         await default_platform_ini.write(platformio_ini_text)
+
+    # Per-install all supported platforms
+    logger.info("Pre-installing all platforms, this will take a while...")
+    install = await asyncio.create_subprocess_exec(
+        "platformio",
+        "-c",
+        "platformio.ini",
+        "pkg",
+        "install",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        cwd=settings.platformio_data_dir,
+    )
+    stdout, stderr = await install.communicate()
+    logger.info(
+        "Pre-installed all platforms:\n %s, %s", stdout.decode(), stderr.decode()
+    )
 
 
 @asynccontextmanager

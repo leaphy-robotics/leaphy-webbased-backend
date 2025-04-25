@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 RUN apt-get -y update && apt-get -y install dumb-init curl && apt-get clean
 
