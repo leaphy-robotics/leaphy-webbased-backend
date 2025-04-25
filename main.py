@@ -50,7 +50,7 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
             await install_libraries(sketch.libraries, sketch.board)
             result = await compile_sketch(sketch, task_id)
             code_cache[cache_key] = result
-            available_task_ids.append(task_id)
+            available_task_ids.insert(0, task_id)
             return result
     finally:
         compile_sessions[session_id] -= 1
