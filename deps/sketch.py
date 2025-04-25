@@ -37,9 +37,9 @@ async def install_libraries(libraries: list[Library], fqbn: str):
         raise HTTPException(422, "Unsupported fqbn")
     pio_environment = fqbn_to_board[fqbn]
     for library in libraries:
-        logger.info("Installing library %s in environment %s", library, pio_environment)
         if library_cache.get(library + pio_environment):
             continue
+        logger.info("Installing library %s in environment %s", library, pio_environment)
         installer = await asyncio.create_subprocess_exec(
             "platformio",
             "pkg",
@@ -65,11 +65,11 @@ async def install_libraries(libraries: list[Library], fqbn: str):
 
 async def compile_sketch(sketch: Sketch, task_num: int) -> dict[str, str]:
     """Compile the sketch and return the result in HEX format or as a binary blob"""
-    sketch_path = f"{settings.platformio_data_dir}/src{task_num}/main.cpp"
+    sketch_path = f"{settings.platformio_data_dir}/src{task_num}/main.ino"
 
     # Write the sketch to a temp .ino file
     async with aiofiles.open(sketch_path, "w+") as platform_ini:
-        await platform_ini.write("#include <Arduino.h>\n" + sketch.source_code)
+        await platform_ini.write(sketch.source_code)
 
     compiler = await asyncio.create_subprocess_exec(
         "platformio",
