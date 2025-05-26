@@ -3,7 +3,7 @@ aiofiles==24.1.0
 uvicorn==0.34.2
 pydantic==2.11.4
 pydantic-settings==2.9.1
-cachetools==5.5.2
+cachetools==6.0.0
 python-minifier==2.11.3
 pyserial==3.5
 groq==0.24.0
