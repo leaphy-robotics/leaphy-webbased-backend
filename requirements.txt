@@ -9,3 +9,6 @@ pyserial==3.5
 groq==0.24.0
 httpx==0.28.1
 platformio==6.1.18
+python-multipart==0.0.20
+tensorflow==2.19.0
+tensorflowjs==4.16.0

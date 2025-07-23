@@ -3,17 +3,23 @@
 import asyncio
 import base64
 
-from fastapi import FastAPI, HTTPException
+import aiofiles
+from fastapi import FastAPI, HTTPException, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from python_minifier import minify
 
 from conf import settings
+from deps.utils import bin2header
 from models import Sketch, PythonProgram, Messages
 
 from deps.sketch import install_libraries, compile_sketch, startup
 from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
+
+from tempfile import TemporaryDirectory
+import tensorflow as tf
+import tensorflowjs as tfjs
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -105,3 +111,26 @@ async def generate(messages: Messages, session_id: Session):
     llm_tokens[session_id] += response.usage.total_tokens
 
     return response.choices[0].message.content
+
+
+@app.post("/ml/convert")
+async def convert(
+    session_id: Session,
+    model_json: UploadFile = File(..., alias="model.json"),
+    model_weights: UploadFile = File(..., alias="model.weights.bin"),
+):
+    with TemporaryDirectory() as directory:
+        async with aiofiles.open(f"{directory}/model.json", "wb") as f:
+            await f.write(await model_json.read())
+
+        async with aiofiles.open(f"{directory}/model.weights.bin", "wb") as f:
+            await f.write(await model_weights.read())
+
+        model = tfjs.converters.load_keras_model(f"{directory}/model.json")
+
+        converter = tf.lite.TFLiteConverter.from_keras_model(model)
+        converter.optimizations = [tf.lite.Optimize.DEFAULT]
+        converter.target_spec.supported_types = [tf.float32]
+
+        tflite_model = converter.convert()
+        return bin2header(tflite_model, "model_data")
