@@ -16,7 +16,7 @@ from conf import settings
 from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
 from deps.sketch import install_libraries, compile_sketch, startup
-from deps.utils import bin2header
+from deps.utils import binary_to_cpp_header
 from models import Sketch, PythonProgram, Messages
 
 app = FastAPI(lifespan=startup)
@@ -132,4 +132,4 @@ async def convert(
         converter.target_spec.supported_types = [tf.float32]
 
         tflite_model = converter.convert()
-        return bin2header(tflite_model, "model_data")
+        return binary_to_cpp_header(tflite_model, "model_data")
