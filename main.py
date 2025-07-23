@@ -2,24 +2,22 @@
 
 import asyncio
 import base64
+from tempfile import TemporaryDirectory
 
 import aiofiles
-from fastapi import FastAPI, HTTPException, File, Form, UploadFile
+import tensorflow as tf
+import tensorflowjs as tfjs
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from python_minifier import minify
 
 from conf import settings
-from deps.utils import bin2header
-from models import Sketch, PythonProgram, Messages
-
-from deps.sketch import install_libraries, compile_sketch, startup
 from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
-
-from tempfile import TemporaryDirectory
-import tensorflow as tf
-import tensorflowjs as tfjs
+from deps.sketch import install_libraries, compile_sketch, startup
+from deps.utils import bin2header
+from models import Sketch, PythonProgram, Messages
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -115,10 +113,11 @@ async def generate(messages: Messages, session_id: Session):
 
 @app.post("/ml/convert")
 async def convert(
-    session_id: Session,
+    _session_id: Session,
     model_json: UploadFile = File(..., alias="model.json"),
     model_weights: UploadFile = File(..., alias="model.weights.bin"),
 ):
+    """Converts a TFJS model to TFLite"""
     with TemporaryDirectory() as directory:
         async with aiofiles.open(f"{directory}/model.json", "wb") as f:
             await f.write(await model_json.read())
