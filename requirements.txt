@@ -6,7 +6,7 @@ pydantic-settings==2.10.1
 cachetools==6.1.0
 python-minifier==2.11.3
 pyserial==3.5
-groq==0.30.0
+groq==0.31.0
 httpx==0.28.1
 platformio==6.1.18
 python-multipart==0.0.20
