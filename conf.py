@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # Groq config
     groq_api_key: str
     max_llm_tokens: int = 10000
+    llm_model: str = "openai/gpt-oss-120b"
 
 
 settings = Settings()

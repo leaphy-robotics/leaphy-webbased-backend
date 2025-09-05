@@ -104,7 +104,7 @@ async def generate(messages: Messages, session_id: Session):
 
     response = client.chat.completions.create(
         messages=list(map(lambda e: e.dict(), messages.messages)),
-        model="llama3-70b-8192",
+        model=settings.llm_model,
     )
     llm_tokens[session_id] += response.usage.total_tokens
 
