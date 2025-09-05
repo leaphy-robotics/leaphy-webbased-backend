@@ -11,5 +11,5 @@ httpx==0.28.1
 platformio==6.1.18
 python-multipart==0.0.20
 jax==0.7.0
-tensorflow==2.19.0
+tensorflow==2.20.0
 tensorflowjs==4.22.0
