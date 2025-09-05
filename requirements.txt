@@ -4,7 +4,7 @@ uvicorn==0.34.3
 pydantic==2.11.7
 pydantic-settings==2.10.1
 cachetools==6.2.0
-python-minifier==2.11.3
+python-minifier==3.0.0
 pyserial==3.5
 groq==0.31.0
 httpx==0.28.1
