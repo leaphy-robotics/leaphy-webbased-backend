@@ -1,6 +1,6 @@
 fastapi==0.119.1
 aiofiles==24.1.0
-uvicorn==0.34.3
+uvicorn==0.38.0
 pydantic==2.12.3
 pydantic-settings==2.10.1
 cachetools==6.2.0
