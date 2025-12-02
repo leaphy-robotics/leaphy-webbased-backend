@@ -33,5 +33,9 @@ class Settings(BaseSettings):
     max_llm_tokens: int = 10000
     llm_model: str = "openai/gpt-oss-120b"
 
+    # Agent config
+    mistral_api_key: str
+    agent_model: str = "mistral-medium-latest"
+
 
 settings = Settings()

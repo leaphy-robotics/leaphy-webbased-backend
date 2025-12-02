@@ -7,7 +7,7 @@ from tempfile import TemporaryDirectory
 import aiofiles
 import tensorflow as tf
 import tensorflowjs as tfjs
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from python_minifier import minify
@@ -17,6 +17,7 @@ from deps.cache import code_cache, get_code_cache_key
 from deps.session import Session, compile_sessions, llm_tokens
 from deps.sketch import install_libraries, compile_sketch, startup
 from deps.utils import binary_to_cpp_header
+from deps.agent import run_agent
 from models import Sketch, PythonProgram, Messages
 
 app = FastAPI(lifespan=startup)
@@ -133,3 +134,10 @@ async def convert(
 
         tflite_model = converter.convert()
         return binary_to_cpp_header(tflite_model, "model_data")
+
+
+@app.websocket("/ai/help")
+async def help_request(websocket: WebSocket):
+    """Handle help request"""
+    await websocket.accept()
+    await run_agent(websocket)
