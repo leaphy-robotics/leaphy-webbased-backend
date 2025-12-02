@@ -99,7 +99,7 @@ async def show_circuit_schema(runtime: ToolRuntime[UserContext]):
     )
 
 
-model = ChatMistralAI(model="mistral-medium-latest", api_key=settings.mistral_api_key)
+model = ChatMistralAI(model=settings.agent_model, api_key=settings.mistral_api_key)
 agent = create_agent(
     model=model,
     tools=[show_multiple_choice_question, show_circuit_schema],
