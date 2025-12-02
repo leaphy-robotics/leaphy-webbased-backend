@@ -73,6 +73,7 @@ You: "Great. Now let's check the wiring. I've highlighted how the screen connect
 @dataclass
 class UserContext:
     """User context for the agent"""
+
     socket: WebSocket
 
 
