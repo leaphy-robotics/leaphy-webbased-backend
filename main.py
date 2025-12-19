@@ -14,7 +14,13 @@ from python_minifier import minify
 
 from conf import settings
 from deps.cache import code_cache, get_code_cache_key
-from deps.session import Session, compile_sessions, llm_tokens
+from deps.session import (
+    Session,
+    AssistantSession,
+    compile_sessions,
+    llm_tokens,
+    assistant_sessions,
+)
 from deps.sketch import install_libraries, compile_sketch, startup
 from deps.utils import binary_to_cpp_header
 from deps.agent import run_agent
@@ -137,7 +143,11 @@ async def convert(
 
 
 @app.websocket("/ai/help")
-async def help_request(websocket: WebSocket):
+async def help_request(websocket: WebSocket, session_id: AssistantSession):
     """Handle help request"""
+    assistant_sessions[session_id] += 1
     await websocket.accept()
-    await run_agent(websocket)
+    try:
+        await run_agent(websocket)
+    finally:
+        assistant_sessions[session_id] -= 1
