@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import io
 from tempfile import TemporaryDirectory
 
 import aiofiles
@@ -24,7 +25,8 @@ from deps.session import (
 from deps.sketch import install_libraries, compile_sketch, startup
 from deps.utils import binary_to_cpp_header
 from deps.agent import run_agent
-from models import Sketch, PythonProgram, Messages
+from deps.mail import send_email
+from models import Sketch, PythonProgram, Messages, FeedbackMessage
 
 app = FastAPI(lifespan=startup)
 app.add_middleware(
@@ -151,3 +153,35 @@ async def help_request(websocket: WebSocket, session_id: AssistantSession):
         await run_agent(websocket)
     finally:
         assistant_sessions[session_id] -= 1
+
+
+@app.post("/feedback")
+async def feedback(message: FeedbackMessage):
+    """Handle feedback"""
+    # Send email
+    body = f"""Name: {message.name}
+Email: {message.email}
+Robot: {message.robot}
+Board: {message.board}
+Libraries: {message.libraries}
+Platform: {message.platform}
+Message: 
+{message.message}
+"""
+    attachments = []
+    if message.uploadLogs:
+        attachments.append(
+            UploadFile(
+                filename="upload-log.txt",
+                file=io.BytesIO(message.uploadLogs.encode("utf-8")),
+            )
+        )
+    if message.sketch:
+        attachments.append(
+            UploadFile(
+                filename="program.txt", file=io.BytesIO(message.sketch.encode("utf-8"))
+            )
+        )
+
+    await send_email(f"Feedback from {message.name}", body, attachments)
+    return {"message": "Feedback sent"}
