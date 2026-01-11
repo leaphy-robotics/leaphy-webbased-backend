@@ -34,3 +34,17 @@ class Messages(BaseModel):
     """Model representing a collection of messages"""
 
     messages: list[Message]
+
+
+class FeedbackMessage(BaseModel):
+    """Model representing a feedback message"""
+
+    name: str
+    email: str
+    message: str
+    robot: str
+    board: str | None = None
+    libraries: list[Library] | None = None
+    uploadLogs: str | None = None
+    sketch: str | None = None
+    platform: str | None = None

@@ -37,5 +37,13 @@ class Settings(BaseSettings):
     mistral_api_key: str
     agent_model: str = "mistral-medium-latest"
 
+    # Mail config
+    mail_server: str
+    mail_port: int
+    mail_username: str
+    mail_password: str
+    mail_from: str
+    mail_to: list[str]
+
 
 settings = Settings()
