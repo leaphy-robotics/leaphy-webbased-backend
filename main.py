@@ -44,6 +44,7 @@ semaphore = asyncio.Semaphore(settings.max_concurrent_tasks)
 available_task_ids = list(range(settings.max_concurrent_tasks))
 
 
+@app.post("/api/compile/cpp")
 @app.post("/compile/cpp")
 async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
     """Compile code and return the result in HEX format"""
@@ -71,6 +72,7 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
         compile_sessions[session_id] -= 1
 
 
+@app.post("/api/minify/python")
 @app.post("/minify/python")
 async def minify_python(program: PythonProgram, session_id: Session) -> PythonProgram:
     """Minify a python program"""
@@ -105,6 +107,7 @@ async def minify_python(program: PythonProgram, session_id: Session) -> PythonPr
         compile_sessions[session_id] -= 1
 
 
+@app.post("/api/ai/generate")
 @app.post("/ai/generate")
 async def generate(messages: Messages, session_id: Session):
     """Generate message"""
@@ -120,6 +123,7 @@ async def generate(messages: Messages, session_id: Session):
     return response.choices[0].message.content
 
 
+@app.post("/api/ml/convert")
 @app.post("/ml/convert")
 async def convert(
     _session_id: Session,
@@ -144,6 +148,7 @@ async def convert(
         return binary_to_cpp_header(tflite_model, "model_data")
 
 
+@app.websocket("/api/ai/help")
 @app.websocket("/ai/help")
 async def help_request(websocket: WebSocket, session_id: AssistantSession):
     """Handle help request"""
@@ -155,7 +160,7 @@ async def help_request(websocket: WebSocket, session_id: AssistantSession):
         assistant_sessions[session_id] -= 1
 
 
-@app.post("/feedback")
+@app.post("/api/feedback")
 async def feedback(message: FeedbackMessage):
     """Handle feedback"""
     # Send email
