@@ -38,12 +38,12 @@ class Settings(BaseSettings):
     agent_model: str = "mistral-medium-latest"
 
     # Mail config
-    mail_server: str
-    mail_port: int
-    mail_username: str
-    mail_password: str
-    mail_from: str
-    mail_to: list[str]
+    mail_server: str | None = None
+    mail_port: int | None = None
+    mail_username: str | None = None
+    mail_password: str | None = None
+    mail_from: str | None = None
+    mail_to: list[str] | None = None
 
 
 settings = Settings()
