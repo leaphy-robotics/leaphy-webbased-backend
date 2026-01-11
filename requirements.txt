@@ -13,6 +13,6 @@ python-multipart==0.0.20
 jax==0.7.0
 tensorflow==2.19.0
 tensorflowjs==4.22.0
-langchain==1.1.0
+langchain==1.2.3
 langchain-mistralai==1.1.0
 fastapi-mail==1.6.1
