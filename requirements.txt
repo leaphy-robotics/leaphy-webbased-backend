@@ -15,3 +15,4 @@ tensorflow==2.19.0
 tensorflowjs==4.22.0
 langchain==1.1.0
 langchain-mistralai==1.1.0
+fastapi-mail==1.6.1
