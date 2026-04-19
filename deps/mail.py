@@ -5,6 +5,7 @@ from fastapi_mail import ConnectionConfig, MessageSchema, FastMail
 from conf import settings
 from deps.logs import logger
 
+
 def load_mail_config() -> ConnectionConfig | None:
     """Load mail configuration"""
     if settings.mail_server:
