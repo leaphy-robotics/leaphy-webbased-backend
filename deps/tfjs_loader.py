@@ -96,12 +96,17 @@ def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
 
             # Try matching by full normalized name, then by simple name + shape
             found = False
-            if normalized_name in weights_dict and weights_dict[normalized_name].shape == weight.shape:
+            if (
+                normalized_name in weights_dict
+                and weights_dict[normalized_name].shape == weight.shape
+            ):
                 weights_list.append(weights_dict[normalized_name])
                 found = True
             else:
                 for name, data in weights_dict.items():
-                    if (name.endswith(simple_name) or simple_name.endswith(name)) and data.shape == weight.shape:
+                    if (
+                        name.endswith(simple_name) or simple_name.endswith(name)
+                    ) and data.shape == weight.shape:
                         weights_list.append(data)
                         found = True
                         break
