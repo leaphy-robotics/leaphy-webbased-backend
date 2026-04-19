@@ -1,3 +1,44 @@
 [tool.pylint.'MESSAGES CONTROL']
 max-line-length = 120
 disable = "too-few-public-methods, import-error"
+
+[tool.black]
+target-version = ["py312"]
+
+[project]
+name = "leaphy-webbased-backend"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Leaphy Foundation",email = "helpdesk@leaphy.nl"}
+]
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "fastapi (>=0.136.0,<0.137.0)",
+    "aiofiles (>=25.1.0,<26.0.0)",
+    "pydantic-settings (>=2.13.1,<3.0.0)",
+    "cachetools (>=7.0.5,<8.0.0)",
+    "python-minifier (>=3.2.0,<4.0.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "pyserial (>=3.5,<4.0)",
+    "platformio (>=6.1.19,<7.0.0)",
+    "tensorflow (>=2,<3)",
+    "langchain (>=1.2.15,<2.0.0)",
+    "langchain-mistralai (>=1.1.2,<2.0.0)",
+    "fastapi-mail (>=1.6.2,<2.0.0)",
+    "groq (>=1.2.0,<2.0.0)",
+    "python-multipart (>=0.0.26,<0.0.27)"
+]
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "black (>=26.3.1,<27.0.0)",
+    "pylint (>=4.0.5,<5.0.0)"
+]

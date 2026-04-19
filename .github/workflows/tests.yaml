@@ -10,14 +10,15 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Create venv
         run: |
           python3 -m venv venv
           . ./venv/bin/activate
-          pip install -r requirements.txt
-          pip install black==24.10.0 pylint==3.3.1
+          pip install --no-cache poetry==2.2.1 && \
+          poetry config virtualenvs.create false && \
+          poetry install --no-cache --with dev
 
       - name: Run tests
         run: |
