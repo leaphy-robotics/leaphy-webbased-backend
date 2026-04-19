@@ -48,7 +48,32 @@ def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
         model_topology = model_topology["model_config"]
 
     # Reconstruct the Keras model from the topology JSON
-    model = keras.models.model_from_json(json.dumps(model_topology))
+    try:
+        model = keras.models.model_from_json(json.dumps(model_topology))
+    except Exception:
+        # Keras 3 might fail to load old TFJS/Keras 2 formats directly.
+        # Try manual reconstruction as a fallback.
+        if model_topology.get("class_name") == "Sequential":
+            layers_config = model_topology["config"]["layers"]
+            model = keras.Sequential()
+            for layer_cfg in layers_config:
+                class_name = layer_cfg["class_name"]
+                config = layer_cfg["config"]
+
+                # Remove Keras 3 incompatible args or args that should be handled differently
+                if "batch_input_shape" in config:
+                    input_shape = config.pop("batch_input_shape")
+                    if len(model.layers) == 0:
+                        model.add(keras.layers.InputLayer(shape=input_shape[1:]))
+
+                # Some initializers might need fixing if they are not standard
+                # For now, we assume standard layers are available in keras.layers
+                layer_cls = getattr(keras.layers, class_name)
+                # Remove name to avoid potential conflicts
+                config.pop("name", None)
+                model.add(layer_cls(**config))
+        else:
+            raise
 
     # Load weights from the binary file
     with open(weights_bin_path, "rb") as f:
@@ -61,25 +86,30 @@ def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
     # Map weights to model layers
     weights_list = []
     for layer in model.layers:
+        if isinstance(layer, keras.layers.InputLayer):
+            continue
         for weight in layer.weights:
             # TFJS names usually don't have :0, Keras names do.
             # We need to normalize both to match.
             normalized_name = normalize_weight_name(weight.name)
-            if normalized_name in weights_dict:
+            simple_name = normalized_name.split("/")[-1]
+
+            # Try matching by full normalized name, then by simple name + shape
+            found = False
+            if normalized_name in weights_dict and weights_dict[normalized_name].shape == weight.shape:
                 weights_list.append(weights_dict[normalized_name])
+                found = True
             else:
-                # Some versions of TF/Keras might have different naming conventions
-                # for nested layers. This is a simple fallback.
-                found = False
-                for name in weights_dict:
-                    if normalized_name.endswith(name):
-                        weights_list.append(weights_dict[name])
+                for name, data in weights_dict.items():
+                    if (name.endswith(simple_name) or simple_name.endswith(name)) and data.shape == weight.shape:
+                        weights_list.append(data)
                         found = True
                         break
-                if not found:
-                    raise ValueError(
-                        f"Weight {weight.name} (normalized: {normalized_name}) not found in weights manifest"
-                    )
+
+            if not found:
+                raise ValueError(
+                    f"Weight {weight.name} (normalized: {normalized_name}) not found in weights manifest with shape {weight.shape}"
+                )
 
     model.set_weights(weights_list)
     return model
