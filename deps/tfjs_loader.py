@@ -38,52 +38,33 @@ def decode_weights(
     return out_group
 
 
-def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
-    """Load a TensorFlow.js model from JSON and binary weights files."""
-    with open(model_json_path, "r", encoding="utf-8") as f:
-        config_json = json.load(f)
+def _reconstruct_sequential_model(model_topology: Dict[str, Any]) -> keras.Model:
+    """Manually reconstruct a Sequential model from topology."""
+    layers_config = model_topology["config"]["layers"]
+    model = keras.Sequential()
+    for layer_cfg in layers_config:
+        class_name = layer_cfg["class_name"]
+        config = layer_cfg["config"]
 
-    model_topology = config_json["modelTopology"]
-    if "model_config" in model_topology:
-        model_topology = model_topology["model_config"]
+        # Remove Keras 3 incompatible args or args that should be handled differently
+        if "batch_input_shape" in config:
+            input_shape = config.pop("batch_input_shape")
+            if len(model.layers) == 0:
+                model.add(keras.layers.InputLayer(shape=input_shape[1:]))
 
-    # Reconstruct the Keras model from the topology JSON
-    try:
-        model = keras.models.model_from_json(json.dumps(model_topology))
-    except Exception:
-        # Keras 3 might fail to load old TFJS/Keras 2 formats directly.
-        # Try manual reconstruction as a fallback.
-        if model_topology.get("class_name") == "Sequential":
-            layers_config = model_topology["config"]["layers"]
-            model = keras.Sequential()
-            for layer_cfg in layers_config:
-                class_name = layer_cfg["class_name"]
-                config = layer_cfg["config"]
+        # Some initializers might need fixing if they are not standard
+        # For now, we assume standard layers are available in keras.layers
+        layer_cls = getattr(keras.layers, class_name)
+        # Remove name to avoid potential conflicts
+        config.pop("name", None)
+        model.add(layer_cls(**config))
+    return model
 
-                # Remove Keras 3 incompatible args or args that should be handled differently
-                if "batch_input_shape" in config:
-                    input_shape = config.pop("batch_input_shape")
-                    if len(model.layers) == 0:
-                        model.add(keras.layers.InputLayer(shape=input_shape[1:]))
 
-                # Some initializers might need fixing if they are not standard
-                # For now, we assume standard layers are available in keras.layers
-                layer_cls = getattr(keras.layers, class_name)
-                # Remove name to avoid potential conflicts
-                config.pop("name", None)
-                model.add(layer_cls(**config))
-        else:
-            raise
-
-    # Load weights from the binary file
-    with open(weights_bin_path, "rb") as f:
-        weights_data = f.read()
-
-    weight_entries = decode_weights(config_json["weightsManifest"], [weights_data])
-
-    weights_dict = {entry["name"]: entry["data"] for entry in weight_entries}
-
-    # Map weights to model layers
+def _match_weights(
+    model: keras.Model, weights_dict: Dict[str, np.ndarray]
+) -> List[np.ndarray]:
+    """Match weights from manifest to model layers."""
     weights_list = []
     for layer in model.layers:
         if isinstance(layer, keras.layers.InputLayer):
@@ -113,8 +94,42 @@ def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
 
             if not found:
                 raise ValueError(
-                    f"Weight {weight.name} (normalized: {normalized_name}) not found in weights manifest with shape {weight.shape}"
+                    f"Weight {weight.name} (normalized: {normalized_name}) "
+                    f"not found in weights manifest with shape {weight.shape}"
                 )
+    return weights_list
+
+
+def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
+    """Load a TensorFlow.js model from JSON and binary weights files."""
+    with open(model_json_path, "r", encoding="utf-8") as f:
+        config_json = json.load(f)
+
+    model_topology = config_json["modelTopology"]
+    if "model_config" in model_topology:
+        model_topology = model_topology["model_config"]
+
+    # Reconstruct the Keras model from the topology JSON
+    try:
+        model = keras.models.model_from_json(json.dumps(model_topology))
+    except (TypeError, ValueError, KeyError, AttributeError):
+        # Keras 3 might fail to load old TFJS/Keras 2 formats directly.
+        # Try manual reconstruction as a fallback.
+        if model_topology.get("class_name") == "Sequential":
+            model = _reconstruct_sequential_model(model_topology)
+        else:
+            raise
+
+    # Load weights from the binary file
+    with open(weights_bin_path, "rb") as f:
+        weights_data = f.read()
+
+    weight_entries = decode_weights(config_json["weightsManifest"], [weights_data])
+
+    weights_dict = {entry["name"]: entry["data"] for entry in weight_entries}
+
+    # Map weights to model layers
+    weights_list = _match_weights(model, weights_dict)
 
     model.set_weights(weights_list)
     return model
