@@ -1,8 +1,9 @@
+"""Module for loading TensorFlow.js models into Keras."""
 import json
 from typing import Any, Dict, List
 
 import numpy as np
-from tensorflow import keras
+import keras
 
 
 def normalize_weight_name(weight_name: str) -> str:
@@ -37,7 +38,8 @@ def decode_weights(
 
 
 def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
-    with open(model_json_path, "r") as f:
+    """Load a TensorFlow.js model from JSON and binary weights files."""
+    with open(model_json_path, "r", encoding="utf-8") as f:
         config_json = json.load(f)
 
     model_topology = config_json["modelTopology"]
@@ -51,18 +53,17 @@ def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
     with open(weights_bin_path, "rb") as f:
         weights_data = f.read()
 
-    weights_manifest = config_json["weightsManifest"]
-    weight_entries = decode_weights(weights_manifest, [weights_data])
+    weight_entries = decode_weights(config_json["weightsManifest"], [weights_data])
 
     weights_dict = {entry["name"]: entry["data"] for entry in weight_entries}
 
     # Map weights to model layers
     weights_list = []
     for layer in model.layers:
-        for w in layer.weights:
+        for weight in layer.weights:
             # TFJS names usually don't have :0, Keras names do.
             # We need to normalize both to match.
-            normalized_name = normalize_weight_name(w.name)
+            normalized_name = normalize_weight_name(weight.name)
             if normalized_name in weights_dict:
                 weights_list.append(weights_dict[normalized_name])
             else:
@@ -76,7 +77,7 @@ def load_tfjs_model(model_json_path: str, weights_bin_path: str) -> keras.Model:
                         break
                 if not found:
                     raise ValueError(
-                        f"Weight {w.name} (normalized: {normalized_name}) not found in weights manifest"
+                        f"Weight {weight.name} (normalized: {normalized_name}) not found in weights manifest"
                     )
 
     model.set_weights(weights_list)
