@@ -7,14 +7,15 @@ from tempfile import TemporaryDirectory
 
 import aiofiles
 import tensorflow as tf
-import tensorflowjs as tfjs
 from fastapi import FastAPI, HTTPException, File, UploadFile, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from groq import Groq
 from python_minifier import minify
 
 from conf import settings
+from deps.agent import run_agent
 from deps.cache import code_cache, get_code_cache_key
+from deps.mail import send_email
 from deps.session import (
     Session,
     AssistantSession,
@@ -23,9 +24,8 @@ from deps.session import (
     assistant_sessions,
 )
 from deps.sketch import install_libraries, compile_sketch, startup
+from deps.tfjs_loader import load_tfjs_model
 from deps.utils import binary_to_cpp_header
-from deps.agent import run_agent
-from deps.mail import send_email
 from models import Sketch, PythonProgram, Messages, FeedbackMessage
 
 app = FastAPI(lifespan=startup)
@@ -138,7 +138,9 @@ async def convert(
         async with aiofiles.open(f"{directory}/model.weights.bin", "wb") as f:
             await f.write(await model_weights.read())
 
-        model = tfjs.converters.load_keras_model(f"{directory}/model.json")
+        model = load_tfjs_model(
+            f"{directory}/model.json", f"{directory}/model.weights.bin"
+        )
 
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         converter.optimizations = [tf.lite.Optimize.DEFAULT]
