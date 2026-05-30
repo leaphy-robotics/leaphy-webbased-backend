@@ -1,6 +1,6 @@
 """Email utilities"""
 
-from fastapi_mail import ConnectionConfig, MessageSchema, FastMail
+from fastapi_mail import ConnectionConfig, MessageSchema, FastMail, MessageType
 
 from conf import settings
 from deps.logs import logger
@@ -32,7 +32,7 @@ async def send_email(subject: str, body: str, attachments: list = None):
     message = MessageSchema(
         subject=subject,
         body=body,
-        subtype=MessageSchema.subtype.plain,
+        subtype=MessageType.plain,
         recipients=settings.mail_to,
         attachments=attachments if attachments else [],
     )
