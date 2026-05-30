@@ -132,5 +132,4 @@ async def run_agent(socket: WebSocket):
             await socket.send_json({"type": "agent_done"})
 
     except WebSocketDisconnect:
-        await socket.close()
         return
