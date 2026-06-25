@@ -11,7 +11,7 @@ USER arduino
 COPY --chown=arduino:arduino pyproject.toml poetry.lock /app/
 
 RUN python3 -m venv /app/venv && . /app/venv/bin/activate && \
-    pip install --no-cache poetry==2.2.1 && \
+    pip install --no-cache poetry==2.4.1 && \
     poetry config virtualenvs.create false && \
     poetry install --only main
 
