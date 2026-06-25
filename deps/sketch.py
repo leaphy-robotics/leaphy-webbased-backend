@@ -4,15 +4,15 @@ import asyncio
 import base64
 import os
 from contextlib import asynccontextmanager
+from shutil import rmtree
 from typing import Any, AsyncGenerator
 
 import aiofiles
 from fastapi import FastAPI, HTTPException
 
 from conf import settings
-from deps.cache import library_cache
 from deps.logs import logger
-from models import Library, Sketch
+from models import Sketch
 
 fqbn_to_board = {  # Mapping from fqbn to PlatformIO board
     "arduino:avr:uno": "uno",
@@ -31,15 +31,17 @@ fqbn_to_platform = {  # Mapping from fqbn to PlatformIO platform
 }
 
 
-async def install_libraries(libraries: list[Library], fqbn: str):
+async def install_libraries(sketch: Sketch, task_num: int):
     """Install libraries for the given sketch"""
-    if not fqbn in fqbn_to_board:
-        raise HTTPException(422, "Unsupported fqbn")
-    pio_environment = fqbn_to_board[fqbn]
-    for library in libraries:
-        if library_cache.get(library + pio_environment):
-            continue
-        logger.info("Installing library %s in environment %s", library, pio_environment)
+    if not sketch.board in fqbn_to_board:
+        raise HTTPException(
+            422,
+            "Unsupported fqbn, valid values are: " + ", ".join(fqbn_to_board.keys()),
+        )
+    pio_environment = fqbn_to_board[sketch.board]
+    for library in sketch.libraries:
+        logger.info("Using library %s in environment %s", library, pio_environment)
+        # We cannot use --global here because we need to support different library versions per project/env
         installer = await asyncio.create_subprocess_exec(
             "platformio",
             "pkg",
@@ -48,10 +50,9 @@ async def install_libraries(libraries: list[Library], fqbn: str):
             library,
             "--environment",
             pio_environment,
-            "--no-save",
             stderr=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            cwd=settings.platformio_data_dir,
+            cwd=f"{settings.platformio_data_dir}/{task_num}",
         )
         stdout, stderr = await installer.communicate()
         if installer.returncode != 0:
@@ -59,37 +60,34 @@ async def install_libraries(libraries: list[Library], fqbn: str):
                 "Library install failed. Error: %s",
                 stderr.decode() + stdout.decode(),
             )
-            continue
-        library_cache[library + pio_environment] = 1
 
 
 async def compile_sketch(sketch: Sketch, task_num: int) -> dict[str, str]:
     """Compile the sketch and return the result in HEX format or as a binary blob"""
-    sketch_path = f"{settings.platformio_data_dir}/src{task_num}/main.ino"
+    sketch_path = f"{settings.platformio_data_dir}/{task_num}/src/main.ino"
 
     # Write the sketch to a temp .ino file
-    async with aiofiles.open(sketch_path, "w+") as platform_ini:
-        await platform_ini.write(sketch.source_code)
+    async with aiofiles.open(sketch_path, "w+") as source_code:
+        await source_code.write(sketch.source_code)
 
     compiler = await asyncio.create_subprocess_exec(
         "platformio",
         "run",
-        "-c",
-        f"platformio{task_num}.ini",
+        "-v",
         "-e",
         f"{fqbn_to_board[sketch.board]}",
         "-j",
         str(settings.threads_per_platformio_compile),
         stderr=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
-        cwd=settings.platformio_data_dir,
+        cwd=f"{settings.platformio_data_dir}/{task_num}",
     )
     stdout, stderr = await compiler.communicate()
     if compiler.returncode != 0:
         logger.warning("Compilation failed: %s", stderr.decode() + stdout.decode())
         raise HTTPException(500, stderr.decode() + stdout.decode())
 
-    output_file = f"{settings.platformio_data_dir}/build{task_num}/{fqbn_to_board[sketch.board]}/firmware."
+    output_file = f"{settings.platformio_data_dir}/{task_num}/build/{fqbn_to_board[sketch.board]}/firmware."
 
     result = {}
     if os.path.exists(output_file + "hex"):
@@ -106,43 +104,44 @@ async def compile_sketch(sketch: Sketch, task_num: int) -> dict[str, str]:
     return result
 
 
-async def setup_platformio() -> None:
-    """Setup PlatformIO compile directory and config files"""
+async def setup_task_platformio_ini(task_num: int):
+    """Setup workdirs and platformio.ini for a single task"""
     platformio_ini_text = "[env]\nlib_compat_mode = strict\n"
     for fqbn, board in fqbn_to_board.items():
         platformio_ini_text += (
             f"\n[env:{board}]\nframework = arduino\n"
             f"platform = {fqbn_to_platform[fqbn]}\nboard = {board}\n"
         )
-
-    # Make sure compile dir exists
-    for task_num in range(settings.max_concurrent_tasks):
-        os.makedirs(f"{settings.platformio_data_dir}/src{task_num}", exist_ok=True)
-        # Generate the platformio{i}.ini file
-        async with aiofiles.open(
-            f"{settings.platformio_data_dir}/platformio{task_num}.ini", "w+"
-        ) as platform_ini:
-            await platform_ini.write(
-                platformio_ini_text
-                + f"\n[platformio]\nsrc_dir = src{task_num}\nbuild_dir = build{task_num}\n"
-            )
-    # Make platformio.ini
+    # Make sure compile and build dirs exist
+    os.makedirs(f"{settings.platformio_data_dir}/{task_num}/src", exist_ok=True)
+    os.makedirs(f"{settings.platformio_data_dir}/{task_num}/build", exist_ok=True)
+    # Generate the platformio.ini file
     async with aiofiles.open(
-        f"{settings.platformio_data_dir}/platformio.ini", "w+"
-    ) as default_platform_ini:
-        await default_platform_ini.write(platformio_ini_text)
+        f"{settings.platformio_data_dir}/{task_num}/platformio.ini", "w+"
+    ) as platform_ini:
+        await platform_ini.write(
+            platformio_ini_text + "\n[platformio]\nsrc_dir = src\nbuild_dir = build\n"
+        )
 
-    # Per-install all supported platforms
+
+async def setup_platformio() -> None:
+    """Setup PlatformIO compile directory and config files"""
+    rmtree(settings.platformio_data_dir)
+
+    for task_num in range(settings.max_concurrent_tasks):
+        await setup_task_platformio_ini(task_num)
+
+    # Pre-install all supported platforms
     logger.info("Pre-installing all platforms, this will take a while...")
     install = await asyncio.create_subprocess_exec(
         "platformio",
         "-c",
-        "platformio.ini",
+        f"{settings.platformio_data_dir}/0/platformio.ini",
         "pkg",
         "install",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
-        cwd=settings.platformio_data_dir,
+        cwd=f"{settings.platformio_data_dir}/0",
     )
     stdout, stderr = await install.communicate()
     logger.info(
