@@ -23,7 +23,12 @@ from deps.session import (
     llm_tokens,
     assistant_sessions,
 )
-from deps.sketch import install_libraries, compile_sketch, startup
+from deps.sketch import (
+    install_libraries,
+    compile_sketch,
+    startup,
+    setup_task_platformio_ini,
+)
 from deps.tfjs_loader import load_tfjs_model
 from deps.utils import binary_to_cpp_header
 from models import Sketch, PythonProgram, Messages, FeedbackMessage
@@ -62,7 +67,8 @@ async def compile_cpp(sketch: Sketch, session_id: Session) -> dict[str, str]:
         async with semaphore:
             try:
                 task_id = available_task_ids.pop(0)
-                await install_libraries(sketch.libraries, sketch.board)
+                await setup_task_platformio_ini(task_id)
+                await install_libraries(sketch, task_id)
                 result = await compile_sketch(sketch, task_id)
                 code_cache[cache_key] = result
             finally:
