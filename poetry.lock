@@ -1223,20 +1223,20 @@ uuid-utils = ">=0.12.0,<1.0"
 
 [[package]]
 name = "langchain-mistralai"
-version = "1.1.4"
+version = "1.1.5"
 description = "An integration package connecting Mistral and LangChain"
 optional = false
 python-versions = "<4.0.0,>=3.10.0"
 groups = ["main"]
 files = [
-    {file = "langchain_mistralai-1.1.4-py3-none-any.whl", hash = "sha256:1d9c2c27a83b3d4020cdc3a81fa5b021200054a984a4c8e8fa30c2f802f781b6"},
-    {file = "langchain_mistralai-1.1.4.tar.gz", hash = "sha256:af1815c7b70051afb93c091c1c3b49cc680cf756dc5feb77344f9e73201660c1"},
+    {file = "langchain_mistralai-1.1.5-py3-none-any.whl", hash = "sha256:e8b2a89ea14ec73858daabad3f120f34732728a4beb2e01aa0aa416ac98a96f7"},
+    {file = "langchain_mistralai-1.1.5.tar.gz", hash = "sha256:439652b31665fc8c3739a46652e3b97b5e228144e83a8f98ad9e2733b300166f"},
 ]
 
 [package.dependencies]
 httpx = ">=0.25.2,<1.0.0"
 httpx-sse = ">=0.3.1,<1.0.0"
-langchain-core = ">=1.3.2,<2.0.0"
+langchain-core = ">=1.4.4,<2.0.0"
 pydantic = ">=2.0.0,<3.0.0"
 tokenizers = ">=0.15.1,<1.0.0"
 
@@ -3679,4 +3679,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "601e6a0bc9516f53e0bd5fa427b7cfceb7568fdd7b446c42bc35abb95a363c67"
+content-hash = "78bf799f67cb30366ad8d5123027a11f63a88aebed5cee0d5141e78c428ad542"
