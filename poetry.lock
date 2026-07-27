@@ -782,14 +782,14 @@ six = "*"
 
 [[package]]
 name = "groq"
-version = "1.5.0"
+version = "1.6.0"
 description = "The official Python library for the groq API"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "groq-1.5.0-py3-none-any.whl", hash = "sha256:a927fd75b4a60cb066c408cb4f9647536caf74e241ea75bc57d1810501b8203f"},
-    {file = "groq-1.5.0.tar.gz", hash = "sha256:8648388f8668629490bb0eab11252b4cc43316149fda9c6343e9a9577fe7df88"},
+    {file = "groq-1.6.0-py3-none-any.whl", hash = "sha256:fa16db582455db324adcff1b5908519474736872e28cd5c8fa2b8bef6860e12a"},
+    {file = "groq-1.6.0.tar.gz", hash = "sha256:c4237ecf0053ba85fd926bb31cb4b178996310474b4618867994e3e40d8e3c02"},
 ]
 
 [package.dependencies]
@@ -3680,4 +3680,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "1932221cc32ad8daa2a9b990e553846ebf974f33cd5545ed52453d607c352077"
+content-hash = "6e796eecf4903b4436f5ee571321022c3d95dcd769c285d96d8e4a5ca288e5e6"
