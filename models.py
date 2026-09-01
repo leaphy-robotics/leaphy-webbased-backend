@@ -10,7 +10,9 @@ from pydantic import HttpUrl
 Library = (
     Annotated[
         str,
-        Field(pattern=r"^[a-zA-Z0-9_\.\-]+(/[a-zA-Z0-9_\.\-]+)?(@[a-zA-Z0-9_\.\-]+)?$"),
+        Field(
+            pattern=r"^[a-zA-Z0-9_ \.\-]+(/[a-zA-Z0-9_ \.\-]+)?(@[a-zA-Z0-9_\.\-]+)?$"
+        ),
     ]
     | HttpUrl
 )

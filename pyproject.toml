@@ -2,6 +2,9 @@
 max-line-length = 120
 disable = "too-few-public-methods, import-error"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [tool.black]
 target-version = ["py312"]
 
@@ -40,5 +43,6 @@ build-backend = "poetry.core.masonry.api"
 [dependency-groups]
 dev = [
     "black (>=26.3.1,<27.0.0)",
-    "pylint (>=4.0.7,<5.0.0)"
+    "pylint (>=4.0.7,<5.0.0)",
+    "pytest (>=9.1.1,<10.0.0)"
 ]
