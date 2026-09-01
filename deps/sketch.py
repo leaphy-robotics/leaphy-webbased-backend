@@ -6,6 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from shutil import rmtree
 from typing import Any, AsyncGenerator
+from pydantic import HttpUrl
 
 import aiofiles
 from fastapi import FastAPI, HTTPException
@@ -40,6 +41,13 @@ async def install_libraries(sketch: Sketch, task_num: int):
         )
     pio_environment = fqbn_to_board[sketch.board]
     for library in sketch.libraries:
+        if isinstance(library, HttpUrl) and not any(
+            str(library).startswith(url) for url in settings.library_url_allowlist
+        ):
+            raise HTTPException(
+                422, "Only libraries from the allowlist can be installed"
+            )
+
         logger.info("Using library %s in environment %s", library, pio_environment)
         # We cannot use --global here because we need to support different library versions per project/env
         installer = await asyncio.create_subprocess_exec(
