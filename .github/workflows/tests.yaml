@@ -23,6 +23,7 @@ jobs:
       - name: Run tests
         run: |
           set -e
+          cp -v .env.example .env
           . ./venv/bin/activate
           black --check .
           pylint *.py deps
