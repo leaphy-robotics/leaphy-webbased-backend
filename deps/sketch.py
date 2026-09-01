@@ -47,7 +47,7 @@ async def install_libraries(sketch: Sketch, task_num: int):
             "pkg",
             "install",
             "--library",
-            library,
+            str(library),
             "--environment",
             pio_environment,
             stderr=asyncio.subprocess.PIPE,

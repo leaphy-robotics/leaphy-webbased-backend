@@ -3,9 +3,17 @@
 from typing import Annotated
 
 from pydantic import BaseModel, Field
+from pydantic import HttpUrl
 
 # Regex match to (hopefully) prevent weird CLI injection issues
-Library = Annotated[str, Field(pattern=r"^[a-zA-Z0-9_ \.@]*$")]
+# (author/)package@version or a (git) URL
+Library = (
+    Annotated[
+        str,
+        Field(pattern=r"^[a-zA-Z0-9_\.\-]+(/[a-zA-Z0-9_\.\-]+)?(@[a-zA-Z0-9_\.\-]+)?$"),
+    ]
+    | HttpUrl
+)
 
 
 class Sketch(BaseModel):
