@@ -2409,15 +2409,15 @@ cli = ["click (>=5.0)"]
 
 [[package]]
 name = "python-minifier"
-version = "3.2.0"
+version = "3.4.0"
 description = "Transform Python source code into it's most compact representation"
 optional = false
-python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,<3.15,>=2.7"
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,<3.16,>=2.7"
 groups = ["main"]
 files = [
-    {file = "python_minifier-3.2.0-py2-none-any.whl", hash = "sha256:fb83102387787f9d4d53d58690eeca8dd2bcf197a8d329cae172f669a848883f"},
-    {file = "python_minifier-3.2.0-py3-none-any.whl", hash = "sha256:b8486b1dc15980d1d833f72a8a8696616a611f1a10fb72aaf96e2de891beb4c2"},
-    {file = "python_minifier-3.2.0.tar.gz", hash = "sha256:d39d4aa9655206870b89b41099a84725e1845319aa5a8bea6a1046b5644cd413"},
+    {file = "python_minifier-3.4.0-py2-none-any.whl", hash = "sha256:baeb38f2963ced0f759bc77e87182fcbb19f66d4dfffd5da8925dc1beb32fc21"},
+    {file = "python_minifier-3.4.0-py3-none-any.whl", hash = "sha256:48694e7d4fb6d9cf3c3b356bfee93374434f2b437aa1ad3cca3fe563f70cc604"},
+    {file = "python_minifier-3.4.0.tar.gz", hash = "sha256:ead3a340c31efee62851ba33cfd998b16816132be794adf3d192ce0bdf5fbca7"},
 ]
 
 [[package]]
@@ -3732,4 +3732,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "5df6ec69095ff0a9d72b0afcb62c4df6d1488db52e53dc327b0bac75a0f12ee7"
+content-hash = "f2934095be2e5285139a642887dd1b4e02d669d52bc4dfec9dd2d691b3b4f53f"
