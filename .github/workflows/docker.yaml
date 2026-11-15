@@ -8,6 +8,10 @@ on:
       - main
   workflow_dispatch: {}
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   push:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push PROD Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         if: github.ref_type == 'tag'
         with:
           file: deploy/Dockerfile
@@ -32,7 +36,7 @@ jobs:
           tags: ghcr.io/leaphy-robotics/leaphy-webbased-backend/leaphy-webbased-backend:prod
 
       - name: Build and push TEST Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         if: github.ref_type == 'branch'
         with:
           file: deploy/Dockerfile
