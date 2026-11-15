@@ -24,7 +24,7 @@ dependencies = [
     "python-minifier (>=3.4.0,<4.0.0)",
     "httpx (>=0.28.1,<0.29.0)",
     "pyserial (>=3.5,<4.0)",
-    "platformio (==6.1.19)",
+    "platformio (==6.2.0)",
     "tensorflow (>=2,<3)",
     "langchain (>=1.4.6,<2.0.0)",
     "langchain-mistralai (>=1.1.6,<2.0.0)",
