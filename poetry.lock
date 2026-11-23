@@ -1371,14 +1371,14 @@ xai = ["langchain-xai"]
 
 [[package]]
 name = "langchain-core"
-version = "1.8.0"
+version = "1.8.3"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0.0,>=3.11.0"
 groups = ["main"]
 files = [
-    {file = "langchain_core-1.8.0-py3-none-any.whl", hash = "sha256:89732f9e7d311de9913ba22caf921c72520145a829f05ec1d9c85013e904213c"},
-    {file = "langchain_core-1.8.0.tar.gz", hash = "sha256:8c571299ae83acec89599cbbb6890018f54225da336a6e315c9e882dd5da6502"},
+    {file = "langchain_core-1.8.3-py3-none-any.whl", hash = "sha256:4d2764d2ab4faf3fec9f17515f15c0d3485a6ef55f75c088f6929944225ff578"},
+    {file = "langchain_core-1.8.3.tar.gz", hash = "sha256:ce448f055dd2cf1db7def27d2b6c2902519369642e8b89d08255c7ca7abd6b36"},
 ]
 
 [package.dependencies]
@@ -1396,22 +1396,22 @@ uuid-utils = ">=0.12.0"
 
 [[package]]
 name = "langchain-mistralai"
-version = "1.1.6"
+version = "1.2.0"
 description = "An integration package connecting Mistral and LangChain"
 optional = false
-python-versions = "<4.0.0,>=3.10.0"
+python-versions = "<4.0.0,>=3.11.0"
 groups = ["main"]
 files = [
-    {file = "langchain_mistralai-1.1.6-py3-none-any.whl", hash = "sha256:0aa59b313b406ee934dc0431873b0e11849d8d746a6a7e281103c6848a9b1319"},
-    {file = "langchain_mistralai-1.1.6.tar.gz", hash = "sha256:c2694828adee61a497c571e25eaba1472095cd1d1f260a7fe15a6e60f9ece039"},
+    {file = "langchain_mistralai-1.2.0-py3-none-any.whl", hash = "sha256:47af93835717f0768ec322504a1406551833c1b87bd8ebaf87e17f6a467bb9cc"},
+    {file = "langchain_mistralai-1.2.0.tar.gz", hash = "sha256:59b1729f1b1357531793a87ab1e322903217710aadad1c5c1fa761249c519c35"},
 ]
 
 [package.dependencies]
-httpx = ">=0.25.2,<1.0.0"
-httpx-sse = ">=0.3.1,<1.0.0"
-langchain-core = ">=1.4.7,<2.0.0"
-pydantic = ">=2.0.0,<3.0.0"
-tokenizers = ">=0.15.1,<1.0.0"
+httpx = ">=0.25.2"
+httpx-sse = ">=0.3.1"
+langchain-core = ">=1.8.1,<2.0.0"
+pydantic = ">=2.0.0"
+tokenizers = ">=0.15.1"
 
 [[package]]
 name = "langchain-protocol"
@@ -4071,4 +4071,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "8c4c347fd32817cc23195e989a192bedc53e171e1bb55621f672afa56b78a26c"
+content-hash = "cc592e77ebe01666776d0121f84555d9eace57319ae62839fbd5eb351d71606e"
