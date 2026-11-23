@@ -200,14 +200,14 @@ files = [
 
 [[package]]
 name = "cachetools"
-version = "7.3.2"
+version = "7.3.3"
 description = "Extensible memoizing collections and decorators"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "cachetools-7.3.2-py3-none-any.whl", hash = "sha256:afb4b563cb37e7a121a6ea45a0deec42916c64eed58875cc15d8cf9eaca89fb2"},
-    {file = "cachetools-7.3.2.tar.gz", hash = "sha256:43e5db663b58c4337a9959069d93f54dd2e065fdd0438a504cd1100fbeb48beb"},
+    {file = "cachetools-7.3.3-py3-none-any.whl", hash = "sha256:32305addec0581cae6d4f7952d01d078dbc521f922650eba395b9d25b7481843"},
+    {file = "cachetools-7.3.3.tar.gz", hash = "sha256:46e92905f580cb137c499b9ec6acd73d569c2c3542ddfeb286618685e55cb340"},
 ]
 
 [[package]]
@@ -4071,4 +4071,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "0becc45ea7bf9f2ac2c26771d2bd258e0e58ee1c3f6cfe2d8c641accb119505c"
+content-hash = "764fbf00d89a9d38361f5fe60e3de9126eef8c07381ab464c68907c98dcaec6b"
