@@ -81,7 +81,6 @@ async def compile_sketch(sketch: Sketch, task_num: int) -> dict[str, str]:
     compiler = await asyncio.create_subprocess_exec(
         "platformio",
         "run",
-        "-v",
         "-e",
         f"{fqbn_to_board[sketch.board]}",
         "-j",
